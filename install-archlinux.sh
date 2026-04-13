@@ -22,17 +22,22 @@ find ~/.ssh -name '*_sk*' 2>/dev/null | while read -r key; do
 done
 
 PRIVATE_REPO="git@github.com:kengzzzz/dotfiles.git"
-TEMP_DIR="/utils/scripts/install.sh"
 BRANCH="main"
 
-rm -rf "$TEMP_DIR"
-git clone --depth 1 --no-checkout --filter=blob:none --branch "$BRANCH" "$PRIVATE_REPO" "$TEMP_DIR"
+rm -rf /tmp/dotfiles-temp
 
-cd "$TEMP_DIR"
-git sparse-checkout init --cone >/dev/null 2>&1
-git sparse-checkout set install.sh >/dev/null 2>&1
-git checkout >/dev/null 2>&1
+git clone --depth 1 --filter=blob:none --no-checkout --branch "$BRANCH" "$PRIVATE_REPO" /tmp/dotfiles-temp
 
+cd /tmp/dotfiles-temp
+
+git sparse-checkout init --no-cone
+git sparse-checkout set "utils/scripts/install.sh"
+git checkout
+
+mv utils/scripts/install.sh ~/
+rm -rf /tmp/dotfiles-temp
+
+cd ~/
 chmod +x install.sh
 echo "Running install.sh..."
 exec ./install.sh
