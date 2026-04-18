@@ -1,11 +1,8 @@
-FROM debian:trixie-slim
+FROM debian@sha256:4ffb3a1511099754cddc70eb1b12e50ffdb67619aa0ab6c13fcd800a78ef7c7a
 
 RUN apt-get update && apt-get install -y \
     build-essential git bc bison flex libssl-dev make libc6-dev libncurses-dev \
-    kmod cpio pahole clang lld llvm rsync fakeroot sudo ca-certificates python3 \
-    && if [ "$(uname -m)" = "x86_64" ]; then \
-       apt-get install -y crossbuild-essential-arm64; \
-    fi \
+    kmod cpio pahole clang lld llvm rsync fakeroot sudo ca-certificates python3 zstd \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd wheel && \

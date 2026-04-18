@@ -23,14 +23,11 @@ services:
         git remote add origin https://github.com/raspberrypi/linux.git
         git fetch --depth 1 origin "${COMMIT_HASH}"
         git checkout FETCH_HEAD
-        export ARCH=arm64
         export LLVM=1
-        if [ "$(uname -m)" = "x86_64" ]; then
-            export CROSS_COMPILE=aarch64-linux-gnu-
-        fi
+        export KERNEL=kernel_2712
         make bcm2712_defconfig
         make menuconfig
-        sudo cp *.config /conf/
+        sudo cp .config /conf/.config
 
   kernel-builder:
     build:
@@ -53,5 +50,12 @@ services:
         git fetch --depth 1 origin "${COMMIT_HASH}"
         git checkout FETCH_HEAD
         cp /tmp/.config .config
-        make -j$(nproc) bindeb-pkg KCFLAGS="-mcpu=native"
-        sudo cp -v /build/*.deb /out/
+        export LLVM=1
+        export KERNEL=kernel_2712
+        make -j$(nproc) Image.gz modules dtbs KCFLAGS="-mcpu=native"
+        make -j$(nproc) INSTALL_MOD_PATH=/out modules_install
+        sudo mkdir -p /out/overlays
+        sudo cp arch/arm64/boot/Image /out/kernel_2712.img
+        sudo cp arch/arm64/boot/dts/broadcom/*.dtb /out/
+        sudo cp arch/arm64/boot/dts/overlays/*.dtbo /out/overlays/
+        sudo cp arch/arm64/boot/dts/overlays/README /out/overlays/
