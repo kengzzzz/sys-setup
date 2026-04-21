@@ -1,0 +1,45 @@
+services:
+  proton-builder:
+    build:
+      context: .
+    image: proton-toolchain
+    container_name: proton-builder
+    volumes:
+      - ./out:/out
+    tmpfs:
+      - /build:rw,exec,size=48G,mode=1777
+    command:
+      - bash
+      - -c
+      - |
+        set -euo pipefail
+        rm -rf /build/linux-proton
+        mkdir -p /build/linux-proton
+        cp -a /src/. /build/linux-proton/
+        cd /build/linux-proton/proton-tkg/proton-tkg-profiles
+        echo '_LOCAL_OPTIMIZED="true"' >> advanced-customization.cfg
+        echo '_GCC_FLAGS="-march=native -O3 -ftree-vectorize -Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types"' >> advanced-customization.cfg
+        echo '_CROSS_FLAGS="-march=native -O3 -ftree-vectorize -Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types"' >> advanced-customization.cfg
+        echo '_LDFLAGS="-Wl,-O3,--sort-common,--as-needed -flto=full -fuse-ld=lld"' >> advanced-customization.cfg
+        echo '_CROSS_LDFLAGS="-Wl,-O3,--sort-common,--as-needed -flto=full -fuse-ld=lld"' >> advanced-customization.cfg
+        echo '_NOINITIALPROMPT="true"' >> advanced-customization.cfg
+        echo '_compiler="clang"' >> advanced-customization.cfg
+        echo '_lto_compiler="clang"' >> advanced-customization.cfg
+        echo '_use_lto="true"' >> advanced-customization.cfg
+        echo '_lto_mode="full"' >> advanced-customization.cfg
+        echo '_custom_compiler_flags="-march=native -O3 -flto=full"' >> advanced-customization.cfg
+        echo '_user_patches_no_confirm=\"true\"' >> advanced-customization.cfg
+        echo '_reuse_built_gst=\"false\"' >> advanced-customization.cfg
+        echo '_LOCAL_PRESET="valve-exp-bleeding"' >> advanced-customization.cfg
+        echo '_hotfixes_no_confirm="true"' >> advanced-customization.cfg
+        echo '_nomakepkg_dependency_autoresolver="false"' >> advanced-customization.cfg
+        echo '_DEPSHELPER=1' >> advanced-customization.cfg
+        cd /build/linux-proton/wine-tkg-git
+        sed -i 's/_build_in_tmpfs="true"/_build_in_tmpfs="false"/' non-makepkg-build.sh
+        chown -R builder:builder /build /out
+        su builder -c "
+          cd /build/linux-proton/proton-tkg
+          sed -i 's/read -rp.*_no_steampath;/_no_steampath=\"y\"/' proton-tkg.sh
+          ./proton-tkg.sh nocontainer
+          cp -r built/proton_tkg_*/ /out/
+        "
