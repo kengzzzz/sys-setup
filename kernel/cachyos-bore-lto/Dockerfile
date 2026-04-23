@@ -10,7 +10,7 @@ RUN pacman -Syy --noconfirm --needed curl && \
     
 FROM cachyos-base
 
-ARG COMMIT_HASH=4224303b6d7a50dd1cc3ffa78864050cc9536eec
+ARG COMMIT_HASH=1c61dfd1c3ad7762faa0db8b06c6af6c59cc4340
 
 RUN pacman -Syyu --noconfirm --needed \
     base-devel git sudo wget bc cpio pahole xmlto kmod libelf python-sphinx pacman-contrib \
@@ -27,9 +27,20 @@ RUN git init && \
     git remote add origin https://github.com/CachyOS/linux-cachyos.git && \
     git fetch --depth 1 origin "${COMMIT_HASH}" && \
     git checkout FETCH_HEAD && \
-    cd linux-cachyos-bore && \
+    cd linux-cachyos && \
+    sed -i 's/_cpusched:=[^}]*/_cpusched:=bore/' PKGBUILD && \
+    sed -i 's/: "${_processor_opt:=}"/: "${_processor_opt:=native}"/' PKGBUILD && \
     sed -i 's/_use_llvm_lto:=[^}]*/_use_llvm_lto:=full/' PKGBUILD && \
-    sed -i 's/_build_nvidia_open:=[^}]*/_build_nvidia_open:=yes/' PKGBUILD
+    sed -i 's/_use_lto_suffix:=[^}]*/_use_lto_suffix:=yes/' PKGBUILD && \
+    sed -i 's/_build_nvidia_open:=[^}]*/_build_nvidia_open:=yes/' PKGBUILD && \
+    sed -i 's/: "${_autofdo:=no}"/: "${_autofdo:=yes}"/' PKGBUILD && \
+    sed -i 's/: "${_autofdo_profile_name:=}"/: "${_autofdo_profile_name:=kernel.afdo}"/' PKGBUILD && \
+    sed -i -E 's/_pkgsuffix=cachyos([-a-z]*)/_pkgsuffix="cachyos-${_cpusched}\1"/g' PKGBUILD && \
+    sed -i "s/pkgdesc='Linux EEVDF/pkgdesc='Linux BORE/" PKGBUILD && \
+    sed -i 's/linux-cachyos-lto/linux-cachyos-bore-lto/g' PKGBUILD
+
+COPY conf/kernel.afdo linux-cachyos/
 
 ENV LLVM=1 \
+    LLVM_IAS=1 \
     BUILDDIR=/build

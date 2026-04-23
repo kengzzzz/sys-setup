@@ -15,13 +15,13 @@ services:
         set -euo pipefail
         mkdir -p /build/linux-cachyos
         cp -a /src/. /build/linux-cachyos/
-        cd /build/linux-cachyos/linux-cachyos-bore
+        cd /build/linux-cachyos/linux-cachyos
         chown -R builder:builder /conf /build
         su builder -c "
           updpkgsums
           makepkg -o
           cd /build/linux-cachyos-bore-lto/src/cachyos-*/
-          cp /build/linux-cachyos/linux-cachyos-bore/config-*-cachyos-bore-lto .config
+          cp /build/linux-cachyos/linux-cachyos/config-*-cachyos-bore-lto .config
           make menuconfig
           cp .config /conf/
         "
@@ -43,7 +43,7 @@ services:
         set -euo pipefail
         mkdir -p /build/linux-cachyos
         cp -a /src/. /build/linux-cachyos/
-        cd /build/linux-cachyos/linux-cachyos-bore
+        cd /build/linux-cachyos/linux-cachyos
         cp /tmp/.config config
         chown -R builder:builder /out /build
         su builder -c "
