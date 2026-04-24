@@ -35,11 +35,15 @@ RUN git init && \
     sed -i 's/_build_nvidia_open:=[^}]*/_build_nvidia_open:=yes/' PKGBUILD && \
     sed -i 's/: "${_autofdo:=no}"/: "${_autofdo:=yes}"/' PKGBUILD && \
     sed -i 's/: "${_autofdo_profile_name:=}"/: "${_autofdo_profile_name:=kernel.afdo}"/' PKGBUILD && \
+    sed -i 's/: "${_propeller:=no}"/: "${_propeller:=yes}"/' PKGBUILD && \
+    sed -i 's/: "${_propeller_profiles:=no}"/: "${_propeller_profiles:=yes}"/' PKGBUILD && \
     sed -i -E 's/_pkgsuffix=cachyos([-a-z]*)/_pkgsuffix="cachyos-${_cpusched}\1"/g' PKGBUILD && \
     sed -i "s/pkgdesc='Linux EEVDF/pkgdesc='Linux BORE/" PKGBUILD && \
     sed -i 's/linux-cachyos-lto/linux-cachyos-bore-lto/g' PKGBUILD
 
 COPY conf/kernel.afdo linux-cachyos/
+COPY conf/propeller_cc_profile.txt linux-cachyos/
+COPY conf/propeller_ld_profile.txt linux-cachyos/
 
 ENV LLVM=1 \
     LLVM_IAS=1 \
