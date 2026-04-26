@@ -1,4 +1,6 @@
-FROM archlinux@sha256:5ba8bb318666baef4d33afefc0e65db80f38b23503cb8e7b150d315cc2d4d5da AS cachyos-base
+ARG ARCH_IMAGE_DIGEST
+
+FROM archlinux@${ARCH_IMAGE_DIGEST} AS cachyos-base
 
 RUN pacman -Syy --noconfirm --needed curl && \
     pacman-key --init && \
@@ -10,7 +12,7 @@ RUN pacman -Syy --noconfirm --needed curl && \
     
 FROM cachyos-base
 
-ARG COMMIT_HASH=1c61dfd1c3ad7762faa0db8b06c6af6c59cc4340
+ARG COMMIT_HASH
 
 RUN pacman -Syyu --noconfirm --needed \
     base-devel git sudo wget bc cpio pahole xmlto kmod libelf python-sphinx pacman-contrib \
@@ -28,9 +30,11 @@ RUN git init && \
     git fetch --depth 1 origin "${COMMIT_HASH}" && \
     git checkout FETCH_HEAD && \
     cd linux-cachyos && \
-    sed -i 's/_use_llvm_lto:=[^}]*/_use_llvm_lto:=full/' PKGBUILD && \
-    sed -i 's/_use_lto_suffix:=[^}]*/_use_lto_suffix:=yes/' PKGBUILD && \
-    sed -i 's/_build_nvidia_open:=[^}]*/_build_nvidia_open:=yes/' PKGBUILD
+    sed -i 's/_use_llvm_lto:=[^}]*/_use_llvm_lto:=thin/' PKGBUILD && \
+    sed -i 's/_build_nvidia_open:=[^}]*/_build_nvidia_open:=yes/' PKGBUILD && \
+    sed -i 's/_build_debug:=[^}]*/_build_debug:=yes/' PKGBUILD && \
+    sed -i 's/: "${_autofdo:=no}"/: "${_autofdo:=yes}"/' PKGBUILD && \
+    sed -i 's/: "${_autofdo_profile_name:=}"/: "${_autofdo_profile_name:=kernel.afdo}"/' PKGBUILD && \
+    sed -i 's/: "${_propeller:=no}"/: "${_propeller:=yes}"/' PKGBUILD
 
-ENV LLVM=1 \
-    BUILDDIR=/build
+COPY conf/kernel.afdo linux-cachyos/

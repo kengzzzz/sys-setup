@@ -1,0 +1,44 @@
+ARG UBUNTU_IMAGE_DIGEST ARCH_IMAGE_DIGEST
+
+FROM ubuntu@${UBUNTU_IMAGE_DIGEST} AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    git cmake ninja-build clang g++ \
+    libunwind-dev libgflags-dev libssl-dev libelf-dev \
+    protobuf-compiler libprotobuf-dev libzstd-dev
+
+WORKDIR /build
+ARG COMMIT_HASH
+
+RUN git init && \
+    git remote add origin https://github.com/google/autofdo.git && \
+    git fetch --depth 1 origin "${COMMIT_HASH}" && \
+    git checkout FETCH_HEAD && \
+    git submodule update --init --recursive  && \
+    mkdir build && cd build && \
+    cmake -DCMAKE_C_COMPILER=clang \
+          -DCMAKE_CXX_COMPILER=clang++ \
+          -DCMAKE_BUILD_TYPE=Release \
+          .. && \
+    make -j$(nproc) create_llvm_prof
+
+FROM archlinux@${ARCH_IMAGE_DIGEST} AS cachyos-base
+
+RUN pacman -Syy --noconfirm --needed curl && \
+    pacman-key --init && \
+    curl -L https://mirror.cachyos.org/cachyos-repo.tar.xz | tar xJ && \
+    cd cachyos-repo && \
+    yes | ./cachyos-repo.sh && \
+    echo -e "\n[multilib]\nInclude = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf && \
+    pacman -Syu --noconfirm cachyos-keyring archlinux-keyring
+    
+FROM cachyos-base
+
+RUN pacman -Syyu --noconfirm --needed \
+    perf zstd tar bash
+
+COPY --from=builder /build/build/create_llvm_prof /usr/local/bin/create_llvm_prof
+
+WORKDIR /build

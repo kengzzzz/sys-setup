@@ -1,0 +1,46 @@
+ARG UBUNTU_IMAGE_DIGEST ARCH_IMAGE_DIGEST
+
+FROM ubuntu@${UBUNTU_IMAGE_DIGEST} AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    wget lsb-release software-properties-common gnupg \
+    git cmake ninja-build \
+    libelf-dev libssl-dev libzstd-dev && \
+    wget https://apt.llvm.org/llvm.sh && \
+    chmod +x llvm.sh && \
+    ./llvm.sh 19
+
+WORKDIR /build
+ARG COMMIT_HASH
+
+RUN git init && \
+    git remote add origin https://github.com/google/llvm-propeller.git && \
+    git fetch --depth 1 origin "${COMMIT_HASH}" && \
+    git checkout FETCH_HEAD && \
+    git submodule update --init --recursive && \
+    cmake -G Ninja -B build \
+          -DCMAKE_C_COMPILER=clang-19 \
+          -DCMAKE_CXX_COMPILER=clang++-19 \
+          -DCMAKE_BUILD_TYPE=Release && \
+    ninja -C build generate_propeller_profiles
+
+FROM archlinux@${ARCH_IMAGE_DIGEST} AS cachyos-base
+
+RUN pacman -Syy --noconfirm --needed curl && \
+    pacman-key --init && \
+    curl -L https://mirror.cachyos.org/cachyos-repo.tar.xz | tar xJ && \
+    cd cachyos-repo && \
+    yes | ./cachyos-repo.sh && \
+    echo -e "\n[multilib]\nInclude = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf && \
+    pacman -Syu --noconfirm cachyos-keyring archlinux-keyring
+    
+FROM cachyos-base
+
+RUN pacman -Syyu --noconfirm --needed \
+    perf zstd tar bash
+
+COPY --from=builder /build/build/propeller/generate_propeller_profiles /usr/local/bin/generate_propeller_profiles
+
+WORKDIR /build
