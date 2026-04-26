@@ -1,0 +1,54 @@
+services:
+  benchmark:
+    build:
+      context: .
+    image: benchmark
+    container_name: benchmark
+    privileged: true
+    volumes:
+      - ./results:/results
+    command:
+      - /bin/bash
+      - -c
+      - |
+        RES="/results/benchmark_$$(uname -r).txt"
+
+        BORE_STAT="Not Present"
+        if sysctl kernel.sched_bore >/dev/null 2>&1; then
+          [ "$$(sysctl -n kernel.sched_bore)" -eq 1 ] && BORE_STAT="Enabled" || BORE_STAT="Disabled"
+        fi
+
+        printf -- "----------------------------------------\n" | tee -a -- "$$RES"
+        printf -- "Kernel: $$(uname -r)\n" | tee -a -- "$$RES"
+        printf -- "BORE:   $$BORE_STAT\n" | tee -a -- "$$RES"
+        printf -- "----------------------------------------\n" | tee -a -- "$$RES"
+        
+        printf -- "--- Throughput ---\n" | tee -a -- "$$RES"
+        
+        VAL=$$(/usr/bin/time -f "%e" dav1d -i /test.ivf --muxer null 2>&1 >/dev/null | tail -n 1)
+        printf -- "%-16s %s\n" "dav1d" "$${VAL:-FAILED}" | tee -a -- "$$RES"
+        
+        VAL=$$(/usr/bin/time -f "%e" x265 --input /test.y4m --fps 60 --preset slow -o /dev/null 2>&1 >/dev/null | tail -n 1)
+        printf -- "%-16s %s\n" "x265" "$${VAL:-FAILED}" | tee -a -- "$$RES"
+        
+        VAL=$$(7z b -mmt=$$(nproc) | grep "Tot:" | tail -n 1 | awk '{print $$4}')
+        printf -- "%-16s %s\n" "7zip (MIPS)" "$${VAL:-FAILED}" | tee -a -- "$$RES"
+        
+        VAL=$$(sysbench cpu --cpu-max-prime=20000 --threads=$$(nproc) run | grep "events per second:" | awk '{print $$4}')
+        printf -- "%-16s %s\n" "sysbench (ops)" "$${VAL:-FAILED}" | tee -a -- "$$RES"
+        
+        VAL=$$(stress-ng --matrix $$(nproc) --timeout 10s --metrics-brief 2>&1 | grep "matrix" | grep -v "info" | awk '{print $$9}')
+        printf -- "%-16s %s\n" "matrix math" "$${VAL:-FAILED}" | tee -a -- "$$RES"
+        
+        printf -- "--- Responsiveness ---\n" | tee -a -- "$$RES"
+        
+        VAL=$$(stress-ng --switch $$(nproc) --timeout 10s --metrics-brief 2>&1 | grep "switch" | grep -v "info" | awk '{print $$9}')
+        printf -- "%-16s %s\n" "ctx switch" "$${VAL:-FAILED}" | tee -a -- "$$RES"
+        
+        VAL=$$(schbench -m 2 -t $$(nproc) -r 15 2>&1 | grep "99.0" | cut -d ":" -f 2 | tr -d ' \t*' | cut -d "(" -f 1 | tail -n 1)
+        printf -- "%-16s %s\n" "schbench (99th)" "$${VAL:-FAILED}" | tee -a -- "$$RES"
+        
+        VAL=$$(hackbench -s 100 -l 1000 -g 15 2>&1 | grep "Time:" | awk '{print $$2}')
+        printf -- "%-16s %s\n" "hackbench (sec)" "$${VAL:-FAILED}" | tee -a -- "$$RES"
+        
+        printf -- "----------------------------------------\n" | tee -a -- "$$RES"

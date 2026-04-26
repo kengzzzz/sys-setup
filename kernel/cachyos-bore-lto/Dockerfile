@@ -1,9 +1,12 @@
 FROM archlinux@sha256:5ba8bb318666baef4d33afefc0e65db80f38b23503cb8e7b150d315cc2d4d5da AS cachyos-base
 
-RUN pacman -Syy --noconfirm --needed curl && \
+RUN pacman -Syy --noconfirm --needed curl git && \
     pacman-key --init && \
-    curl -L https://mirror.cachyos.org/cachyos-repo.tar.xz | tar xJ && \
-    cd cachyos-repo && \
+    mkdir -p /tmp/cachyos-setup && cd /tmp/cachyos-setup && \
+    git init && \
+    git remote add origin https://github.com/CachyOS/cachyos-repo-add-script.git && \
+    git fetch --depth 1 origin 063f193f1983df869e1884466b84d8fa13e5fce5 && \
+    git checkout FETCH_HEAD && \
     yes | ./cachyos-repo.sh && \
     echo -e "\n[multilib]\nInclude = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf && \
     pacman -Syu --noconfirm cachyos-keyring archlinux-keyring
