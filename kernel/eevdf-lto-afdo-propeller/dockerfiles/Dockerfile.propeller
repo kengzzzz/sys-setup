@@ -2,15 +2,23 @@ ARG UBUNTU_IMAGE_DIGEST ARCH_IMAGE_DIGEST
 
 FROM ubuntu@${UBUNTU_IMAGE_DIGEST} AS builder
 
+ARG LLVM_GPG_FINGERPRINT
+
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y \
     wget lsb-release software-properties-common gnupg \
     git cmake ninja-build \
     libelf-dev libssl-dev libzstd-dev && \
-    wget https://apt.llvm.org/llvm.sh && \
-    chmod +x llvm.sh && \
-    ./llvm.sh 19
+    install -m 0755 -d /etc/apt/keyrings && \
+    wget -qO /tmp/llvm.key https://apt.llvm.org/llvm-snapshot.gpg.key && \
+    gpg --show-keys /tmp/llvm.key | grep -q "${LLVM_GPG_FINGERPRINT}" && \
+    cat /tmp/llvm.key | gpg --dearmor -o /etc/apt/keyrings/llvm.gpg && \
+    rm /tmp/llvm.key && \
+    OS_CODENAME=$(lsb_release -cs) && \
+    echo "deb [signed-by=/etc/apt/keyrings/llvm.gpg] http://apt.llvm.org/${OS_CODENAME}/ llvm-toolchain-${OS_CODENAME}-19 main" > /etc/apt/sources.list.d/llvm.list && \
+    apt-get update && \
+    apt-get install -y clang-19 lldb-19 lld-19 clangd-19
 
 WORKDIR /build
 ARG PROPELLER_COMMIT_HASH
@@ -28,12 +36,14 @@ RUN git init && \
 
 FROM archlinux@${ARCH_IMAGE_DIGEST} AS cachyos-base
 
+ARG CACHYOS_COMMIT_HASH
+
 RUN pacman -Syy --noconfirm --needed curl git && \
     pacman-key --init && \
     mkdir -p /tmp/cachyos-setup && cd /tmp/cachyos-setup && \
     git init && \
     git remote add origin https://github.com/CachyOS/cachyos-repo-add-script.git && \
-    git fetch --depth 1 origin 063f193f1983df869e1884466b84d8fa13e5fce5 && \
+    git fetch --depth 1 origin "${CACHYOS_COMMIT_HASH}" && \
     git checkout FETCH_HEAD && \
     yes | ./cachyos-repo.sh && \
     echo -e "\n[multilib]\nInclude = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf && \

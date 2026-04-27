@@ -1,4 +1,4 @@
-![](fastfetch.png)
+![](assets/fastfetch.png)
 
 # Compile AutoFDO Kernel
 
