@@ -1,7 +1,7 @@
 x-common-build-args: &common-build-args
   ARCH_IMAGE_DIGEST: sha256:5ba8bb318666baef4d33afefc0e65db80f38b23503cb8e7b150d315cc2d4d5da
   CACHYOS_COMMIT_HASH: 063f193f1983df869e1884466b84d8fa13e5fce5
-  KERNEL_COMMIT_HASH: 1c61dfd1c3ad7762faa0db8b06c6af6c59cc4340
+  KERNEL_COMMIT_HASH: 188f42461a55082eb465ddadad08225de6be07e6
 
 services:
   kernel-config:
