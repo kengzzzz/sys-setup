@@ -1,0 +1,101 @@
+x-llama-build-args: &llama-build-args
+  BASE_CUDA_DEV_CONTAINER: nvidia/cuda@sha256:520292dbb4f755fd360766059e62956e9379485d9e073bbd2f6e3c20c270ed66 # nvidia/cuda version: 12.8.1-devel-ubuntu24.04
+  LLAMA_CPP_REPO: https://github.com/ggml-org/llama.cpp.git
+  LLAMA_CPP_COMMIT: b46812de78f8fbcb6cf0154947e8633ebc78d9ac
+  CUDA_ARCH: 89-real
+  CUDA_COMPRESSION_MODE: speed
+
+x-model-volume: &model-volume
+  type: bind
+  source: ./models
+  target: /models
+
+x-llama-service: &llama-service
+  build:
+    context: .
+    dockerfile: dockerfiles/Dockerfile.llama
+    args: *llama-build-args
+  user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+  gpus: all
+  ipc: host
+  ulimits:
+    memlock: -1
+    stack: 67108864
+  working_dir: /models
+  environment:
+    NVIDIA_VISIBLE_DEVICES: all
+    NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    HOME: /models/home
+    XDG_CACHE_HOME: /models/.cache
+    HF_HOME: /models/hf-home
+    HUGGINGFACE_HUB_CACHE: /models/hf-home/hub
+    HF_TOKEN: ${HF_TOKEN:-}
+    SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
+  volumes:
+    - *model-volume
+
+services:
+  llama-server:
+    <<: *llama-service
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.llama
+      target: server
+      args: *llama-build-args
+    image: llama-server
+    container_name: llama-server
+    ports:
+      - 127.0.0.1:8080:8080
+    command:
+      - -hf
+      - ${MODEL_HF_REPO}
+      - -ngl
+      - "999"
+      - -np
+      - "1"
+      - -fa
+      - "on"
+      - -c
+      - "65536"
+      - -ctk
+      - q8_0
+      - -ctv
+      - q8_0
+      - -ncmoe
+      - "20"
+      - --no-mmap
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+
+  llama-completion:
+    <<: *llama-service
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.llama
+      target: completion
+      args: *llama-build-args
+    image: llama-completion
+    container_name: llama-completion
+    entrypoint:
+      - /app/llama-completion
+      - -hf
+      - ${MODEL_HF_REPO}
+      - -ngl
+      - "999"
+      - -fa
+      - "on"
+      - -c
+      - "65536"
+      - -ctk
+      - q8_0
+      - -ctv
+      - q8_0
+      - -ncmoe
+      - "18"
+      - --no-mmap
+    command:
+      - --interactive-first
+      - -n
+      - "64"
