@@ -35,7 +35,34 @@ x-llama-service: &llama-service
   volumes:
     - *model-volume
 
+x-tailscale-image: &tailscale-image
+  ghcr.io/tailscale/tailscale@sha256:dbeff02d2337344b351afac203427218c4d0a06c43fc10a865184063498472a6
+
+x-tailscale-volume: &tailscale-volume
+  type: bind
+  source: ./tailscale/state
+  target: /var/lib/tailscale
+
 services:
+  tailscale:
+    image: *tailscale-image
+    container_name: tailscale
+    hostname: llama-server
+    env_file:
+      - ${LLAMA_ENV_FILE:-.env}
+    environment:
+      TS_ACCEPT_DNS: "false"
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_USERSPACE: "false"
+    volumes:
+      - *tailscale-volume
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - net_admin
+      - net_raw
+    restart: unless-stopped
+
   llama-server:
     <<: *llama-service
     build:
@@ -45,5 +72,6 @@ services:
       args: *llama-build-args
     image: llama-server
     container_name: llama-server
-    ports:
-      - 127.0.0.1:${LLAMA_ARG_PORT:-8080}:${LLAMA_ARG_PORT:-8080}
+    depends_on:
+      - tailscale
+    network_mode: service:tailscale

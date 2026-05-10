@@ -2,5 +2,6 @@ out
 extract_dbg
 *.data
 results
-llama.cpp/models/
-llama.cpp/.env
+models/
+.env
+tailscale
