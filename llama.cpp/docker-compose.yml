@@ -1,7 +1,7 @@
 x-llama-build-args: &llama-build-args
-  BASE_CUDA_DEV_CONTAINER: nvidia/cuda@sha256:520292dbb4f755fd360766059e62956e9379485d9e073bbd2f6e3c20c270ed66 # nvidia/cuda version: 12.8.1-devel-ubuntu24.04
+  BASE_CUDA_DEV_CONTAINER: nvidia/cuda@sha256:44a9504c6dfb50b1241464241b02a93871928f373de6f5a644cf5fe9f080aa63 # nvidia/cuda version: 13.2.1-devel-ubuntu24.04
   LLAMA_CPP_REPO: https://github.com/ggml-org/llama.cpp.git
-  LLAMA_CPP_COMMIT: b46812de78f8fbcb6cf0154947e8633ebc78d9ac
+  LLAMA_CPP_COMMIT: 1e5ad35d560b90a8ac447d149c8f8447ae1fcaa0
   CUDA_ARCH: 89-real
   CUDA_COMPRESSION_MODE: speed
 
@@ -13,8 +13,10 @@ x-model-volume: &model-volume
 x-llama-service: &llama-service
   build:
     context: .
-    dockerfile: dockerfiles/Dockerfile.llama
+    dockerfile: Dockerfile
     args: *llama-build-args
+  env_file:
+    - ${LLAMA_ENV_FILE:-.env}
   user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
   gpus: all
   ipc: host
@@ -29,7 +31,6 @@ x-llama-service: &llama-service
     XDG_CACHE_HOME: /models/.cache
     HF_HOME: /models/hf-home
     HUGGINGFACE_HUB_CACHE: /models/hf-home/hub
-    HF_TOKEN: ${HF_TOKEN:-}
     SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
   volumes:
     - *model-volume
@@ -39,63 +40,10 @@ services:
     <<: *llama-service
     build:
       context: .
-      dockerfile: dockerfiles/Dockerfile.llama
+      dockerfile: Dockerfile
       target: server
       args: *llama-build-args
     image: llama-server
     container_name: llama-server
     ports:
-      - 127.0.0.1:8080:8080
-    command:
-      - -hf
-      - ${MODEL_HF_REPO}
-      - -ngl
-      - "999"
-      - -np
-      - "1"
-      - -fa
-      - "on"
-      - -c
-      - "65536"
-      - -ctk
-      - q8_0
-      - -ctv
-      - q8_0
-      - -ncmoe
-      - "20"
-      - --no-mmap
-      - --host
-      - 0.0.0.0
-      - --port
-      - "8080"
-
-  llama-completion:
-    <<: *llama-service
-    build:
-      context: .
-      dockerfile: dockerfiles/Dockerfile.llama
-      target: completion
-      args: *llama-build-args
-    image: llama-completion
-    container_name: llama-completion
-    entrypoint:
-      - /app/llama-completion
-      - -hf
-      - ${MODEL_HF_REPO}
-      - -ngl
-      - "999"
-      - -fa
-      - "on"
-      - -c
-      - "65536"
-      - -ctk
-      - q8_0
-      - -ctv
-      - q8_0
-      - -ncmoe
-      - "18"
-      - --no-mmap
-    command:
-      - --interactive-first
-      - -n
-      - "64"
+      - 127.0.0.1:${LLAMA_ARG_PORT:-8080}:${LLAMA_ARG_PORT:-8080}
