@@ -1,8 +1,10 @@
-ARG UBUNTU_IMAGE_DIGEST ARCH_IMAGE_DIGEST
+ARG UBUNTU_IMAGE_DIGEST
+ARG ARCH_IMAGE_DIGEST
 
-FROM ubuntu@${UBUNTU_IMAGE_DIGEST} AS builder
+FROM ubuntu@${UBUNTU_IMAGE_DIGEST} AS propeller-builder
 
 ARG LLVM_GPG_FINGERPRINT
+ARG PROPELLER_COMMIT_HASH
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -13,7 +15,7 @@ RUN apt-get update && apt-get install -y \
     install -m 0755 -d /etc/apt/keyrings && \
     wget -qO /tmp/llvm.key https://apt.llvm.org/llvm-snapshot.gpg.key && \
     gpg --show-keys /tmp/llvm.key | grep -q "${LLVM_GPG_FINGERPRINT}" && \
-    cat /tmp/llvm.key | gpg --dearmor -o /etc/apt/keyrings/llvm.gpg && \
+    gpg --dearmor -o /etc/apt/keyrings/llvm.gpg /tmp/llvm.key && \
     rm /tmp/llvm.key && \
     OS_CODENAME=$(lsb_release -cs) && \
     echo "deb [signed-by=/etc/apt/keyrings/llvm.gpg] http://apt.llvm.org/${OS_CODENAME}/ llvm-toolchain-${OS_CODENAME}-19 main" > /etc/apt/sources.list.d/llvm.list && \
@@ -21,7 +23,6 @@ RUN apt-get update && apt-get install -y \
     apt-get install -y clang-19 lldb-19 lld-19 clangd-19
 
 WORKDIR /build
-ARG PROPELLER_COMMIT_HASH
 
 RUN git init && \
     git remote add origin https://github.com/google/llvm-propeller.git && \
@@ -48,12 +49,46 @@ RUN pacman -Syy --noconfirm --needed curl git && \
     yes | ./cachyos-repo.sh && \
     echo -e "\n[multilib]\nInclude = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf && \
     pacman -Syu --noconfirm cachyos-keyring archlinux-keyring
-    
-FROM cachyos-base
+
+FROM cachyos-base AS kernel-toolchain
+
+ARG KERNEL_COMMIT_HASH
+ARG FLAVOR
+ARG PATCH_FILE="${FLAVOR}.patch"
+
+RUN pacman -Syyu --noconfirm --needed \
+    base-devel sudo wget bc cpio pahole xmlto kmod libelf python-sphinx pacman-contrib \
+    rust rust-bindgen rust-src ncurses llvm && \
+    pacman -Scc --noconfirm && \
+    rm -rf /var/lib/pacman/sync/* && \
+    useradd -m -G wheel builder && \
+    echo "%wheel ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/builder && \
+    chmod 0440 /etc/sudoers.d/builder
+
+WORKDIR /src
+
+RUN git init && \
+    git remote add origin https://github.com/CachyOS/linux-cachyos.git && \
+    git fetch --depth 1 origin "${KERNEL_COMMIT_HASH}" && \
+    git checkout FETCH_HEAD
+
+COPY patches/${PATCH_FILE} linux-cachyos/pkgbuild.patch
+COPY profiles/* linux-cachyos/
+
+RUN cd linux-cachyos && patch PKGBUILD < pkgbuild.patch
+
+FROM cachyos-base AS autofdo-profiler
+
+RUN pacman -Syyu --noconfirm --needed \
+    perf zstd tar bash llvm
+
+WORKDIR /build
+
+FROM cachyos-base AS propeller-profiler
 
 RUN pacman -Syyu --noconfirm --needed \
     perf zstd tar bash
 
-COPY --from=builder /build/build/propeller/generate_propeller_profiles /usr/local/bin/generate_propeller_profiles
+COPY --from=propeller-builder /build/build/propeller/generate_propeller_profiles /usr/local/bin/generate_propeller_profiles
 
 WORKDIR /build

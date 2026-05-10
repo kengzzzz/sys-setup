@@ -6,11 +6,41 @@ x-common-build-args: &common-build-args
   PROPELLER_COMMIT_HASH: e7a831e46e8822f00d0fb9082486745c62748a7e
   LLVM_GPG_FINGERPRINT: 6084F3CF814B57C1CF12EFD515CF4D18AF4F7421
 
+x-common-tmpfs: &common-tmpfs
+  - /build:rw,exec,size=64G,mode=1777
+
+x-kernel-build: &kernel-build
+  context: .
+  dockerfile: ./Dockerfile
+  target: kernel-toolchain
+  args:
+    <<: *common-build-args
+
+x-profiler-build: &profiler-build
+  context: .
+  dockerfile: ./Dockerfile
+  args:
+    <<: *common-build-args
+
+x-kernel-service: &kernel-service
+  tmpfs: *common-tmpfs
+  volumes:
+    - ./scripts:/scripts:ro
+
+x-profile-service: &profile-service
+  privileged: true
+  pid: "host"
+  tmpfs: *common-tmpfs
+  volumes:
+    - ./scripts:/scripts:ro
+    - ./profiles:/profiles
+    - ./out:/out
+
 services:
   kernel-autofdo:
+    <<: *kernel-service
     build:
-      context: .
-      dockerfile: dockerfiles/Dockerfile.kernel
+      <<: *kernel-build
       args:
         <<: *common-build-args
         FLAVOR: autofdo
@@ -19,37 +49,26 @@ services:
     volumes:
       - ./scripts:/scripts:ro
       - ./out:/out
-    tmpfs:
-      - /build:rw,exec,size=64G,mode=1777
     command:
       - bash
       - /scripts/build-cachyos-package.sh
       - autofdo
 
   autofdo:
+    <<: *profile-service
     build:
-      context: .
-      dockerfile: dockerfiles/Dockerfile.autofdo
-      args:
-        <<: *common-build-args
+      <<: *profiler-build
+      target: autofdo-profiler
     image: autofdo
     container_name: autofdo
-    privileged: true
-    pid: "host"
-    volumes:
-      - ./scripts:/scripts:ro
-      - ./profiles:/profiles
-      - ./out:/out
-    tmpfs:
-      - /build:rw,exec,size=64G,mode=1777
     command:
       - bash
       - /scripts/generate-autofdo-profile.sh
 
   kernel-propeller:
+    <<: *kernel-service
     build:
-      context: .
-      dockerfile: dockerfiles/Dockerfile.kernel
+      <<: *kernel-build
       args:
         <<: *common-build-args
         FLAVOR: propeller
@@ -58,37 +77,26 @@ services:
     volumes:
       - ./scripts:/scripts:ro
       - ./out:/out
-    tmpfs:
-      - /build:rw,exec,size=64G,mode=1777
     command:
       - bash
       - /scripts/build-cachyos-package.sh
       - propeller
 
   propeller:
+    <<: *profile-service
     build:
-      context: .
-      dockerfile: dockerfiles/Dockerfile.propeller
-      args:
-        <<: *common-build-args
+      <<: *profiler-build
+      target: propeller-profiler
     image: propeller
     container_name: propeller
-    privileged: true
-    pid: "host"
-    volumes:
-      - ./scripts:/scripts:ro
-      - ./profiles:/profiles
-      - ./out:/out
-    tmpfs:
-      - /build:rw,exec,size=64G,mode=1777
     command:
       - bash
       - /scripts/generate-propeller-profile.sh
 
   kernel-config:
+    <<: *kernel-service
     build:
-      context: .
-      dockerfile: dockerfiles/Dockerfile.kernel
+      <<: *kernel-build
       args:
         <<: *common-build-args
         FLAVOR: kernel
@@ -97,16 +105,14 @@ services:
     volumes:
       - ./scripts:/scripts:ro
       - ./patches:/patches
-    tmpfs:
-      - /build:rw,exec,size=64G,mode=1777
     command:
       - bash
       - /scripts/generate-config-patch.sh
 
   kernel-builder:
+    <<: *kernel-service
     build:
-      context: .
-      dockerfile: dockerfiles/Dockerfile.kernel
+      <<: *kernel-build
       args:
         <<: *common-build-args
         FLAVOR: kernel
@@ -116,8 +122,6 @@ services:
       - ./scripts:/scripts:ro
       - ./out:/out
       - ./patches/config.patch:/patches/config.patch:ro
-    tmpfs:
-      - /build:rw,exec,size=64G,mode=1777
     command:
       - bash
       - /scripts/build-custom-kernel.sh
