@@ -1,7 +1,7 @@
 x-llama-build-args: &llama-build-args
   BASE_CUDA_DEV_CONTAINER: nvidia/cuda@sha256:44a9504c6dfb50b1241464241b02a93871928f373de6f5a644cf5fe9f080aa63
-  LLAMA_CPP_REPO: https://github.com/turbo-tan/llama.cpp-tq3.git
-  LLAMA_CPP_COMMIT: c87aeb58b7eee5d5b67382f1d4860976baced29a
+  LLAMA_CPP_REPO: https://github.com/TheTom/llama-cpp-turboquant.git
+  LLAMA_CPP_COMMIT: 5aeb2fdbe26cd4c534c6fa15de73cb5749bd0403
   CUDA_ARCH: 89-real
   CUDA_COMPRESSION_MODE: speed
 
@@ -21,10 +21,10 @@ x-tailscale-volume: &tailscale-volume
 services:
   tailscale:
     image: *tailscale-image
-    container_name: tailscale-tq3
-    hostname: llama-server-tq3
+    container_name: tailscale-turboquant
+    hostname: llama-server-turboquant
     env_file:
-      - ${LLAMA_ENV_FILE:-.env}
+      - ${EXPERIMENTAL_LLAMA_ENV_FILE:-.env.turboquant}
     environment:
       TS_ACCEPT_DNS: "false"
       TS_STATE_DIR: /var/lib/tailscale
@@ -44,13 +44,13 @@ services:
       dockerfile: Dockerfile.experimental
       target: server
       args: *llama-build-args
-    image: llama-server-tq3
-    container_name: llama-server-tq3
+    image: llama-server-turboquant
+    container_name: llama-server-turboquant
     depends_on:
       - tailscale
     network_mode: service:tailscale
     env_file:
-      - ${LLAMA_ENV_FILE:-.env}
+      - ${EXPERIMENTAL_LLAMA_ENV_FILE:-.env.turboquant}
     user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
     gpus: all
     ipc: host

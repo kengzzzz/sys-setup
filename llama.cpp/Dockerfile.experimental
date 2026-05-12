@@ -114,7 +114,7 @@ ENV LLAMA_ARG_HOST=0.0.0.0 \
     LD_LIBRARY_PATH=/usr/local/lib:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64 \
     PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-LABEL org.opencontainers.image.source="https://github.com/turbo-tan/llama.cpp-tq3" \
+LABEL org.opencontainers.image.source="https://github.com/TheTom/llama-cpp-turboquant" \
       org.opencontainers.image.revision="${LLAMA_CPP_COMMIT}" \
       org.ggml.llama.cuda.arch="${CUDA_ARCH}" \
       org.ggml.llama.cuda.compression_mode="${CUDA_COMPRESSION_MODE}" \

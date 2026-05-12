@@ -4,4 +4,5 @@ extract_dbg
 results
 models/
 .env
+.env.turboquant
 tailscale
