@@ -1,60 +1,39 @@
-x-common-variables: &common-vars
+x-common-build-args: &common-build-args
+  DEBIAN_IMAGE_DIGEST: sha256:109e2c65005bf160609e4ba6acf7783752f8502ad218e298253428690b9eaa4b
+  COMMIT_HASH: a72a0085aeac23ac8aa76c90c476e20626046ea7
+
+x-common-vars: &common-vars
   ARCH: arm64
+
+x-kernel-service: &kernel-service
+  platform: "linux/arm64"
+  build:
+    context: .
+    args:
+      <<: *common-build-args
+  image: rpi-toolchain
+  environment: *common-vars
+  tmpfs:
+    - /build:rw,exec,size=12G,mode=1777
 
 services:
   kernel-config:
-    platform: "linux/arm64"
-    build:
-      context: .
-    image: rpi-toolchain
+    <<: *kernel-service
     container_name: kernel-config
-    environment: *common-vars
     volumes:
-      - ./conf:/conf
-    tmpfs:
-      - /build:rw,exec,size=12G,mode=1777
+      - ./scripts:/scripts:ro
+      - ./patches:/patches
     command:
       - bash
-      - -c
-      - |
-        set -euo pipefail
-        chown -R builder:builder /conf
-        su builder -c "
-          mkdir -p /build/linux-rpi
-          cp -a /src/. /build/linux-rpi/
-          cd /build/linux-rpi
-          make bcm2712_defconfig
-          make menuconfig
-          cp .config /conf/.config
-        "
+      - /scripts/generate-config-patch.sh
 
   kernel-builder:
-    platform: "linux/arm64"
-    build:
-      context: .
-    image: rpi-toolchain
+    <<: *kernel-service
     container_name: kernel-builder
-    environment: *common-vars
     volumes:
+      - ./scripts:/scripts:ro
       - ./out:/out
-      - ./conf/.config:/tmp/.config:ro
-    tmpfs:
-      - /build:rw,exec,size=12G,mode=1777
+      - ./patches/config.patch:/patches/config.patch:ro
     command:
       - bash
-      - -c
-      - |
-        set -euo pipefail
-        chown -R builder:builder /out /build
-        su builder -c "
-          mkdir -p /build/linux-rpi /out/overlays
-          cp -a /src/. /build/linux-rpi/
-          cd /build/linux-rpi
-          cp /tmp/.config .config
-          make -j$(nproc) Image.gz modules dtbs KCFLAGS='-mcpu=native'
-          make -j$(nproc) INSTALL_MOD_PATH=/out modules_install
-          cp arch/arm64/boot/Image /out/kernel_2712.img
-          cp arch/arm64/boot/dts/broadcom/*.dtb /out/
-          cp arch/arm64/boot/dts/overlays/*.dtbo /out/overlays/
-          cp arch/arm64/boot/dts/overlays/README /out/overlays/
-        "
+      - /scripts/build-custom-kernel.sh

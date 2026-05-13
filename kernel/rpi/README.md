@@ -18,6 +18,6 @@
 - update `/boot/firmware/config.txt`. Add
 ```
 os_prefix=custom/
-
+kernel=kernel_2712.img
 ```
 - `sudo cp /boot/firmware/cmdline.txt /boot/firmware/custom/`

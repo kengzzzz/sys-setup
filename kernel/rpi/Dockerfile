@@ -1,6 +1,7 @@
-FROM debian@sha256:4ffb3a1511099754cddc70eb1b12e50ffdb67619aa0ab6c13fcd800a78ef7c7a
+ARG DEBIAN_IMAGE_DIGEST
+ARG COMMIT_HASH
 
-ARG COMMIT_HASH=bc0c440ce8a9ba7dbcd22fcee403ef91daf5a9ec
+FROM debian@${DEBIAN_IMAGE_DIGEST}
 
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     build-essential git bc bison flex libssl-dev make libc6-dev libncurses-dev \
