@@ -73,6 +73,7 @@ RUN git init && \
     git checkout FETCH_HEAD
 
 COPY patches/${PATCH_FILE} linux-cachyos/pkgbuild.patch
+COPY patches/fragnesia-skb-shared-frag.patch linux-cachyos/
 COPY profiles/* linux-cachyos/
 
 RUN cd linux-cachyos && patch PKGBUILD < pkgbuild.patch
