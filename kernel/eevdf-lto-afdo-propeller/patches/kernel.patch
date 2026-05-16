@@ -69,16 +69,6 @@
  elif ! _is_lto_kernel && [ "$_use_gcc_suffix" = "yes" ]; then
      _pkgsuffix=cachyos-gcc
  else
-@@ -217,7 +217,8 @@
- _nv_open_pkg="NVIDIA-kernel-module-source-${_nv_ver}"
- source=(
-     "https://github.com/CachyOS/linux/releases/download/${_srcname}/${_srcname}.tar.gz"
--    "config")
-+    "config"
-+    "fragnesia-skb-shared-frag.patch")
- 
- # LLVM makedepends
- if _is_lto_kernel; then
 @@ -593,10 +594,6 @@
                  'scx-scheds: to use sched-ext schedulers')
      provides=(VIRTUALBOX-GUEST-MODULES WIREGUARD-MODULE KSMBD-MODULE V4L2LOOPBACK-MODULE NTSYNC-MODULE VHBA-MODULE ADIOS-MODULE)

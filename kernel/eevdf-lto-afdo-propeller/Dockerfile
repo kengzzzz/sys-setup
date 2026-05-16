@@ -37,16 +37,15 @@ RUN git init && \
 
 FROM archlinux@${ARCH_IMAGE_DIGEST} AS cachyos-base
 
-ARG CACHYOS_COMMIT_HASH
+ARG CACHYOS_REPO_FLAVOR
 
-RUN pacman -Syy --noconfirm --needed curl git && \
+COPY assets/cachyos-signing-key.asc /usr/local/share/cachyos-signing-key.asc
+COPY scripts/setup-cachyos-repo.sh /usr/local/bin/setup-cachyos-repo
+
+RUN pacman -Syy --noconfirm --needed gcc && \
     pacman-key --init && \
-    mkdir -p /tmp/cachyos-setup && cd /tmp/cachyos-setup && \
-    git init && \
-    git remote add origin https://github.com/CachyOS/cachyos-repo-add-script.git && \
-    git fetch --depth 1 origin "${CACHYOS_COMMIT_HASH}" && \
-    git checkout FETCH_HEAD && \
-    yes | ./cachyos-repo.sh && \
+    chmod 0755 /usr/local/bin/setup-cachyos-repo && \
+    CACHYOS_REPO_FLAVOR="${CACHYOS_REPO_FLAVOR}" setup-cachyos-repo && \
     echo -e "\n[multilib]\nInclude = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf && \
     pacman -Syu --noconfirm cachyos-keyring archlinux-keyring
 
@@ -57,7 +56,7 @@ ARG FLAVOR
 ARG PATCH_FILE="${FLAVOR}.patch"
 
 RUN pacman -Syyu --noconfirm --needed \
-    base-devel sudo wget bc cpio pahole xmlto kmod libelf python-sphinx pacman-contrib \
+    base-devel sudo git wget bc cpio pahole xmlto kmod libelf python-sphinx pacman-contrib \
     rust rust-bindgen rust-src ncurses llvm && \
     pacman -Scc --noconfirm && \
     rm -rf /var/lib/pacman/sync/* && \
@@ -73,7 +72,6 @@ RUN git init && \
     git checkout FETCH_HEAD
 
 COPY patches/${PATCH_FILE} linux-cachyos/pkgbuild.patch
-COPY patches/fragnesia-skb-shared-frag.patch linux-cachyos/
 COPY profiles/* linux-cachyos/
 
 RUN cd linux-cachyos && patch PKGBUILD < pkgbuild.patch
