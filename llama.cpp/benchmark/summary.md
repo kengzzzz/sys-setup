@@ -1,16 +1,16 @@
 # llama.cpp benchmark summary
 
-- Timestamp (UTC): `2026-05-16T15:21:48Z`
+- Timestamp (UTC): `2026-05-17T01:26:09Z`
 - Host: `x86_64`
 - CPU threads: `32`
 - GPU: `NVIDIA GeForce RTX 4070 Ti SUPER, 16376 MiB, 595.71.05`
-- Baseline VRAM (used/peak): `13079` / `13089` MiB
-- Candidate VRAM (used/peak): `13079` / `13089` MiB
-- Model: `/models/hf-home/hub/models--unsloth--Qwen3.6-35B-A3B-GGUF/snapshots/a483e9e6cbd595906af30beda3187c2663a1118c/Qwen3.6-35B-A3B-UD-Q6_K.gguf`
+- Baseline VRAM (used/peak): `13077` / `13087` MiB
+- Candidate VRAM (used/peak): `13077` / `13087` MiB
+- Model: `/models/hf-home/hub/models--unsloth--Qwen3.6-35B-A3B-GGUF/snapshots/a483e9e6cbd595906af30beda3187c2663a1118c/Qwen3.6-35B-A3B-UD-Q6_K_XL.gguf`
 - Baseline image: `ghcr.io/ggml-org/llama.cpp@sha256:111681c55c83007572032ba96134f81b809b71a0a652cd70595298c6976d0276`
 - Baseline image revision: `not labeled`
 - Candidate image: `llama-server:latest`
-- Candidate image revision: `dd9280a6643d2c4931df7c9246b2f344c0a0513a`
+- Candidate image revision: `b64739ea393b3c9d07cc9907e0a611f707838051`
 
 ## Benchmark setup
 
@@ -23,7 +23,7 @@
 - Flash attention: `on`
 - Context size: `131072`
 - KV cache types: `q8_0 / q8_0`
-- CPU MoE threads: `27`
+- CPU MoE threads: `28`
 - mmap: `off`
 
 ## Aggregate
@@ -31,22 +31,22 @@
 | Metric | Baseline | Candidate | Delta |
 | --- | ---: | ---: | ---: |
 | Total predicted tokens | 1,419 | 1,419 | +0 |
-| Total wall time (s) | 23.03 | 22.65 | -1.65% |
-| Aggregate throughput | 61.62 tok/s | 62.65 tok/s | +1.68% |
+| Total wall time (s) | 24.54 | 24.46 | -0.33% |
+| Aggregate throughput | 57.82 tok/s | 58.01 tok/s | +0.33% |
 
 ## Per-prompt results
 
 | Prompt | Baseline tok/s | Candidate tok/s | Delta |
 | --- | ---: | ---: | ---: |
-| `code_python` | 68.59 tok/s | 70.17 tok/s | +2.30% |
-| `code_cpp` | 68.69 tok/s | 70.39 tok/s | +2.47% |
-| `explain_concept` | 68.76 tok/s | 70.49 tok/s | +2.52% |
-| `summarize` | 69.16 tok/s | 69.99 tok/s | +1.20% |
-| `qa_factual` | 69.15 tok/s | 69.87 tok/s | +1.04% |
-| `translation` | 70.83 tok/s | 71.90 tok/s | +1.51% |
-| `creative_short` | 68.93 tok/s | 69.71 tok/s | +1.13% |
-| `stepwise_math` | 68.91 tok/s | 69.68 tok/s | +1.11% |
-| `long_code_review` | 68.57 tok/s | 70.03 tok/s | +2.12% |
+| `code_python` | 64.60 tok/s | 64.86 tok/s | +0.40% |
+| `code_cpp` | 64.73 tok/s | 65.07 tok/s | +0.52% |
+| `explain_concept` | 64.95 tok/s | 65.13 tok/s | +0.28% |
+| `summarize` | 64.98 tok/s | 65.47 tok/s | +0.75% |
+| `qa_factual` | 65.22 tok/s | 65.39 tok/s | +0.26% |
+| `translation` | 66.42 tok/s | 67.28 tok/s | +1.30% |
+| `creative_short` | 65.02 tok/s | 65.15 tok/s | +0.21% |
+| `stepwise_math` | 64.95 tok/s | 64.91 tok/s | -0.06% |
+| `long_code_review` | 64.51 tok/s | 64.67 tok/s | +0.25% |
 
 ## Notes
 
