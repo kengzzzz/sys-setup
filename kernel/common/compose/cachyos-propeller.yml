@@ -1,0 +1,70 @@
+x-propeller-build-args: &propeller-build-args
+  ARCH_IMAGE_DIGEST: ${ARCH_IMAGE_DIGEST:?set ARCH_IMAGE_DIGEST}
+  UBUNTU_IMAGE_DIGEST: ${UBUNTU_IMAGE_DIGEST:?set UBUNTU_IMAGE_DIGEST}
+  CACHYOS_REPO_FLAVOR: ${CACHYOS_REPO_FLAVOR:-auto}
+  KERNEL_GIT_REMOTE: ${KERNEL_GIT_REMOTE:-https://github.com/CachyOS/linux-cachyos.git}
+  KERNEL_REF: ${KERNEL_REF:?set KERNEL_REF}
+  KERNEL_SOURCE_SUBDIR: ${KERNEL_SOURCE_SUBDIR:?set KERNEL_SOURCE_SUBDIR}
+  VARIANT_PATH: ${VARIANT_PATH:?set VARIANT_PATH}
+  PROPELLER_REF: ${PROPELLER_REF:?set PROPELLER_REF}
+  LLVM_GPG_FINGERPRINT: ${LLVM_GPG_FINGERPRINT:?set LLVM_GPG_FINGERPRINT}
+
+x-propeller-env: &propeller-env
+  KERNEL_SOURCE_SUBDIR: ${KERNEL_SOURCE_SUBDIR:?set KERNEL_SOURCE_SUBDIR}
+  KERNEL_CONFIG_GLOB: ${KERNEL_CONFIG_GLOB:?set KERNEL_CONFIG_GLOB}
+
+x-propeller-tmpfs: &propeller-tmpfs
+  - /build:rw,exec,size=${BUILD_TMPFS_SIZE:-64G},mode=1777
+
+x-propeller-kernel-build: &propeller-kernel-build
+  context: ../..
+  dockerfile: common/docker/cachyos.Dockerfile
+  target: kernel-toolchain
+  args:
+    <<: *propeller-build-args
+
+x-propeller-profiler-build: &propeller-profiler-build
+  context: ../..
+  dockerfile: common/docker/cachyos-propeller.Dockerfile
+  args:
+    <<: *propeller-build-args
+
+services:
+  kernel-propeller:
+    environment:
+      <<: *propeller-env
+    tmpfs: *propeller-tmpfs
+    build:
+      <<: *propeller-kernel-build
+      args:
+        <<: *propeller-build-args
+        FLAVOR: propeller
+        PATCH_FILE: ${PROPELLER_PATCH_FILE:-propeller.patch}
+    image: ${VARIANT_NAME:?set VARIANT_NAME}-kernel-propeller
+    container_name: ${VARIANT_NAME}-kernel-propeller
+    volumes:
+      - ../scripts/cachyos:/scripts:ro
+      - ${VARIANT_DIR:?set VARIANT_DIR}/out:/out
+    command:
+      - bash
+      - /scripts/build-cachyos-package.sh
+      - propeller
+
+  propeller:
+    privileged: true
+    pid: "host"
+    environment:
+      <<: *propeller-env
+    tmpfs: *propeller-tmpfs
+    build:
+      <<: *propeller-profiler-build
+      target: propeller-profiler
+    image: ${VARIANT_NAME}-propeller
+    container_name: ${VARIANT_NAME}-propeller
+    volumes:
+      - ../scripts/cachyos:/scripts:ro
+      - ${VARIANT_DIR}/profiles:/profiles
+      - ${VARIANT_DIR}/out:/out
+    command:
+      - bash
+      - /scripts/generate-propeller-profile.sh

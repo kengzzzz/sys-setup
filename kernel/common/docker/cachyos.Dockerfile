@@ -1,11 +1,11 @@
-ARG ARCH_IMAGE_DIGEST
+ARG ARCH_IMAGE_DIGEST=sha256:1047e6e7878d58e4ee47e1cd6459a32fab41246b0efc4109e11b7ef16f50b14d
 
 FROM archlinux@${ARCH_IMAGE_DIGEST} AS cachyos-base
 
-ARG CACHYOS_REPO_FLAVOR
+ARG CACHYOS_REPO_FLAVOR=auto
 
-COPY assets/cachyos-signing-key.asc /usr/local/share/cachyos-signing-key.asc
-COPY scripts/setup-cachyos-repo.sh /usr/local/bin/setup-cachyos-repo
+COPY common/assets/cachyos-signing-key.asc /usr/local/share/cachyos-signing-key.asc
+COPY common/scripts/cachyos/setup-cachyos-repo.sh /usr/local/bin/setup-cachyos-repo
 
 RUN pacman -Syy --noconfirm --needed gcc && \
     pacman-key --init && \
@@ -16,9 +16,12 @@ RUN pacman -Syy --noconfirm --needed gcc && \
 
 FROM cachyos-base AS kernel-toolchain
 
-ARG KERNEL_COMMIT_HASH
+ARG KERNEL_GIT_REMOTE=https://github.com/CachyOS/linux-cachyos.git
+ARG KERNEL_REF
+ARG KERNEL_SOURCE_SUBDIR=linux-cachyos-lts
+ARG VARIANT_PATH
 ARG FLAVOR
-ARG PATCH_FILE="${FLAVOR}.patch"
+ARG PATCH_FILE
 
 RUN pacman -Syyu --noconfirm --needed \
     base-devel sudo git wget bc cpio pahole xmlto kmod libelf python-sphinx pacman-contrib \
@@ -31,15 +34,18 @@ RUN pacman -Syyu --noconfirm --needed \
 
 WORKDIR /src
 
-RUN git init && \
-    git remote add origin https://github.com/CachyOS/linux-cachyos.git && \
-    git fetch --depth 1 origin "${KERNEL_COMMIT_HASH}" && \
+RUN test -n "${KERNEL_REF}" && \
+    test -n "${VARIANT_PATH}" && \
+    test -n "${PATCH_FILE}" && \
+    git init && \
+    git remote add origin "${KERNEL_GIT_REMOTE}" && \
+    git fetch --depth 1 origin "${KERNEL_REF}" && \
     git checkout FETCH_HEAD
 
-COPY patches/${PATCH_FILE} linux-cachyos-lts/pkgbuild.patch
-COPY profiles/ linux-cachyos-lts/
+COPY ${VARIANT_PATH}/patches/${PATCH_FILE} ${KERNEL_SOURCE_SUBDIR}/pkgbuild.patch
+COPY ${VARIANT_PATH}/profiles/ ${KERNEL_SOURCE_SUBDIR}/
 
-RUN cd linux-cachyos-lts && patch PKGBUILD < pkgbuild.patch
+RUN cd "${KERNEL_SOURCE_SUBDIR}" && patch PKGBUILD < pkgbuild.patch
 
 FROM cachyos-base AS autofdo-profiler
 

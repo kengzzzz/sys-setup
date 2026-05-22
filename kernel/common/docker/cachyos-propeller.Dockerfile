@@ -1,14 +1,15 @@
-ARG UBUNTU_IMAGE_DIGEST
-ARG ARCH_IMAGE_DIGEST
+ARG ARCH_IMAGE_DIGEST=sha256:1047e6e7878d58e4ee47e1cd6459a32fab41246b0efc4109e11b7ef16f50b14d
+ARG UBUNTU_IMAGE_DIGEST=sha256:c4a8d5503dfb2a3eb8ab5f807da5bc69a85730fb49b5cfca2330194ebcc41c7b
 
 FROM ubuntu@${UBUNTU_IMAGE_DIGEST} AS propeller-builder
 
-ARG LLVM_GPG_FINGERPRINT
-ARG PROPELLER_COMMIT_HASH
+ARG LLVM_GPG_FINGERPRINT=6084F3CF814B57C1CF12EFD515CF4D18AF4F7421
+ARG PROPELLER_REF
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y \
+RUN test -n "${PROPELLER_REF}" && \
+    apt-get update && apt-get install -y \
     wget lsb-release software-properties-common gnupg \
     git cmake ninja-build \
     libelf-dev libssl-dev libzstd-dev && \
@@ -26,7 +27,7 @@ WORKDIR /build
 
 RUN git init && \
     git remote add origin https://github.com/google/llvm-propeller.git && \
-    git fetch --depth 1 origin "${PROPELLER_COMMIT_HASH}" && \
+    git fetch --depth 1 origin "${PROPELLER_REF}" && \
     git checkout FETCH_HEAD && \
     git submodule update --init --recursive && \
     cmake -G Ninja -B build \
@@ -37,10 +38,10 @@ RUN git init && \
 
 FROM archlinux@${ARCH_IMAGE_DIGEST} AS cachyos-base
 
-ARG CACHYOS_REPO_FLAVOR
+ARG CACHYOS_REPO_FLAVOR=auto
 
-COPY assets/cachyos-signing-key.asc /usr/local/share/cachyos-signing-key.asc
-COPY scripts/setup-cachyos-repo.sh /usr/local/bin/setup-cachyos-repo
+COPY common/assets/cachyos-signing-key.asc /usr/local/share/cachyos-signing-key.asc
+COPY common/scripts/cachyos/setup-cachyos-repo.sh /usr/local/bin/setup-cachyos-repo
 
 RUN pacman -Syy --noconfirm --needed gcc && \
     pacman-key --init && \
@@ -48,40 +49,6 @@ RUN pacman -Syy --noconfirm --needed gcc && \
     CACHYOS_REPO_FLAVOR="${CACHYOS_REPO_FLAVOR}" setup-cachyos-repo && \
     echo -e "\n[multilib]\nInclude = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf && \
     pacman -Syu --noconfirm cachyos-keyring archlinux-keyring
-
-FROM cachyos-base AS kernel-toolchain
-
-ARG KERNEL_COMMIT_HASH
-ARG FLAVOR
-ARG PATCH_FILE="${FLAVOR}.patch"
-
-RUN pacman -Syyu --noconfirm --needed \
-    base-devel sudo git wget bc cpio pahole xmlto kmod libelf python-sphinx pacman-contrib \
-    rust rust-bindgen rust-src ncurses llvm && \
-    pacman -Scc --noconfirm && \
-    rm -rf /var/lib/pacman/sync/* && \
-    useradd -m -G wheel builder && \
-    echo "%wheel ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/builder && \
-    chmod 0440 /etc/sudoers.d/builder
-
-WORKDIR /src
-
-RUN git init && \
-    git remote add origin https://github.com/CachyOS/linux-cachyos.git && \
-    git fetch --depth 1 origin "${KERNEL_COMMIT_HASH}" && \
-    git checkout FETCH_HEAD
-
-COPY patches/${PATCH_FILE} linux-cachyos-lts/pkgbuild.patch
-COPY profiles/ linux-cachyos-lts/
-
-RUN cd linux-cachyos-lts && patch PKGBUILD < pkgbuild.patch
-
-FROM cachyos-base AS autofdo-profiler
-
-RUN pacman -Syyu --noconfirm --needed \
-    perf zstd tar bash llvm
-
-WORKDIR /build
 
 FROM cachyos-base AS propeller-profiler
 

@@ -1,0 +1,79 @@
+--- PKGBUILD
++++ PKGBUILD
+@@ -20,7 +20,7 @@
+ # 'eevdf' - select 'EEVDF Scheduler'
+ # 'rt' - select EEVDF, but includes a series of realtime patches
+ # 'rt-bore' - select Burst-Oriented Response Enhancer, but includes a series of realtime patches
+-: "${_cpusched:=cachyos}"
++: "${_cpusched:=bore}"
+ 
+ ### Tweak kernel options prior to a build via nconfig
+ : "${_makenconfig:=no}"
+@@ -84,7 +84,7 @@
+ # - "native" (use compiler autodetection)
+ # - "zen4" (Use znver4 compiler optimizations)
+ # - "generic" (kernel's default - to share the package between machines with different CPU µarch as long as they are x86-64)
+-: "${_processor_opt:=}"
++: "${_processor_opt:=native}"
+ 
+ # Clang LTO mode, only available with the "llvm" compiler - options are "none", "full" or "thin".
+ # ATTENTION - one of three predefined values should be selected!
+@@ -92,7 +92,7 @@
+ # "thin: uses multiple threads, faster and uses less memory, may have a lower runtime performance than Full."
+ # "thin-dist: Similar to thin, but uses a distributed model rather than in-process: https://discourse.llvm.org/t/rfc-distributed-thinlto-build-for-kernel/85934"
+ # "none: disable LTO
+-: "${_use_llvm_lto:=thin}"
++: "${_use_llvm_lto:=full}"
+ 
+ # Use suffix -lto only when requested by the user
+ # yes - enable -lto suffix
+@@ -119,14 +119,14 @@
+ # Builds the open nvidia module and package it into a own base
+ # This does replace the requirement of nvidia-open-dkms
+ # Use this only if you have Turing+ GPU
+-: "${_build_nvidia_open:=no}"
++: "${_build_nvidia_open:=yes}"
+ 
+ # Builds the r8125 module and package it into its own package
+ # Replaces requirement for r8125-dkms
+ : "${_build_r8125:=no}"
+ 
+ # Build a debug package with non-stripped vmlinux
+-: "${_build_debug:=no}"
++: "${_build_debug:=yes}"
+ 
+ # Enable AUTOFDO_CLANG for the first compilation to create a kernel, which can be used for profiling
+ # Workflow:
+@@ -136,7 +136,7 @@
+ # 3. Profile the kernel and convert the profile, see Generating the Profile for AutoFDO
+ # 4. Put the profile into the sourcedir
+ # 5. Run kernel build again with the _autofdo_profile_name path to profile specified
+-: "${_autofdo:=no}"
++: "${_autofdo:=yes}"
+ 
+ # Name for the AutoFDO profile
+ : "${_autofdo_profile_name:=}"
+@@ -165,13 +165,7 @@
+     return $?
+ }
+ 
+-if _is_lto_kernel && [ "$_use_lto_suffix" = "yes"  ]; then
+-    _pkgsuffix=cachyos-lto
+-elif ! _is_lto_kernel && [ "$_use_gcc_suffix" = "yes" ]; then
+-    _pkgsuffix=cachyos-gcc
+-else
+-    _pkgsuffix=cachyos
+-fi
++_pkgsuffix=profiler
+ 
+ pkgbase="linux-$_pkgsuffix"
+ _major=7.0
+@@ -182,7 +176,7 @@
+ _tagrel=1
+ pkgrel=1
+ _srcname=cachyos-${_major}.${_minor}-${_tagrel}
+-pkgdesc='Linux EEVDF + LTO + AutoFDO + Propeller Cachy Sauce Kernel by CachyOS with other patches and improvements.'
++pkgdesc='Linux BORE + FullLTO + AutoFDO with other patches and improvements by CachyOS.'
+ _kernver="$pkgver-$pkgrel"
+ _kernuname="${pkgver}-${_pkgsuffix}"
+ arch=('x86_64')

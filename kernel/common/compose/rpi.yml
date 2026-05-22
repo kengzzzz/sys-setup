@@ -1,0 +1,41 @@
+x-rpi-build-args: &rpi-build-args
+  DEBIAN_IMAGE_DIGEST: ${DEBIAN_IMAGE_DIGEST:?set DEBIAN_IMAGE_DIGEST}
+  COMMIT_HASH: ${COMMIT_HASH:?set COMMIT_HASH}
+
+x-rpi-env: &rpi-env
+  ARCH: ${ARCH:-arm64}
+
+x-rpi-service: &rpi-service
+  platform: "linux/arm64"
+  build:
+    context: ../..
+    dockerfile: common/docker/rpi.Dockerfile
+    args:
+      <<: *rpi-build-args
+  image: ${VARIANT_NAME:?set VARIANT_NAME}-toolchain
+  environment:
+    <<: *rpi-env
+  tmpfs:
+    - /build:rw,exec,size=${BUILD_TMPFS_SIZE:-12G},mode=1777
+
+services:
+  kernel-config:
+    <<: *rpi-service
+    container_name: ${VARIANT_NAME}-kernel-config
+    volumes:
+      - ../scripts/rpi:/scripts:ro
+      - ${VARIANT_DIR:?set VARIANT_DIR}/patches:/patches
+    command:
+      - bash
+      - /scripts/generate-config-patch.sh
+
+  kernel-builder:
+    <<: *rpi-service
+    container_name: ${VARIANT_NAME}-kernel-builder
+    volumes:
+      - ../scripts/rpi:/scripts:ro
+      - ${VARIANT_DIR}/out:/out
+      - ${VARIANT_DIR}/patches/config.patch:/patches/config.patch:ro
+    command:
+      - bash
+      - /scripts/build-custom-kernel.sh

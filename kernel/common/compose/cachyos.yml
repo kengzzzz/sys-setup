@@ -1,0 +1,110 @@
+x-cachyos-build-args: &cachyos-build-args
+  ARCH_IMAGE_DIGEST: ${ARCH_IMAGE_DIGEST:?set ARCH_IMAGE_DIGEST}
+  CACHYOS_REPO_FLAVOR: ${CACHYOS_REPO_FLAVOR:-auto}
+  KERNEL_GIT_REMOTE: ${KERNEL_GIT_REMOTE:-https://github.com/CachyOS/linux-cachyos.git}
+  KERNEL_REF: ${KERNEL_REF:?set KERNEL_REF}
+  KERNEL_SOURCE_SUBDIR: ${KERNEL_SOURCE_SUBDIR:?set KERNEL_SOURCE_SUBDIR}
+  VARIANT_PATH: ${VARIANT_PATH:?set VARIANT_PATH}
+
+x-cachyos-env: &cachyos-env
+  KERNEL_SOURCE_SUBDIR: ${KERNEL_SOURCE_SUBDIR:?set KERNEL_SOURCE_SUBDIR}
+  KERNEL_CONFIG_GLOB: ${KERNEL_CONFIG_GLOB:?set KERNEL_CONFIG_GLOB}
+
+x-common-tmpfs: &common-tmpfs
+  - /build:rw,exec,size=${BUILD_TMPFS_SIZE:-64G},mode=1777
+
+x-kernel-build: &kernel-build
+  context: ../..
+  dockerfile: common/docker/cachyos.Dockerfile
+  target: kernel-toolchain
+  args:
+    <<: *cachyos-build-args
+
+x-profiler-build: &profiler-build
+  context: ../..
+  dockerfile: common/docker/cachyos.Dockerfile
+  args:
+    <<: *cachyos-build-args
+
+x-kernel-service: &kernel-service
+  environment:
+    <<: *cachyos-env
+  tmpfs: *common-tmpfs
+  volumes:
+    - ../scripts/cachyos:/scripts:ro
+
+x-profile-service: &profile-service
+  privileged: true
+  pid: "host"
+  environment:
+    <<: *cachyos-env
+  tmpfs: *common-tmpfs
+  volumes:
+    - ../scripts/cachyos:/scripts:ro
+    - ${VARIANT_DIR:?set VARIANT_DIR}/profiles:/profiles
+    - ${VARIANT_DIR:?set VARIANT_DIR}/out:/out
+
+services:
+  kernel-autofdo:
+    <<: *kernel-service
+    build:
+      <<: *kernel-build
+      args:
+        <<: *cachyos-build-args
+        FLAVOR: autofdo
+        PATCH_FILE: ${AUTOFDO_PATCH_FILE:-autofdo.patch}
+    image: ${VARIANT_NAME:?set VARIANT_NAME}-kernel-autofdo
+    container_name: ${VARIANT_NAME}-kernel-autofdo
+    volumes:
+      - ../scripts/cachyos:/scripts:ro
+      - ${VARIANT_DIR}/out:/out
+    command:
+      - bash
+      - /scripts/build-cachyos-package.sh
+      - autofdo
+
+  autofdo:
+    <<: *profile-service
+    build:
+      <<: *profiler-build
+      target: autofdo-profiler
+    image: ${VARIANT_NAME}-autofdo
+    container_name: ${VARIANT_NAME}-autofdo
+    command:
+      - bash
+      - /scripts/generate-autofdo-profile.sh
+
+  kernel-config:
+    <<: *kernel-service
+    build:
+      <<: *kernel-build
+      args:
+        <<: *cachyos-build-args
+        FLAVOR: kernel
+        PATCH_FILE: ${KERNEL_PATCH_FILE:-kernel.patch}
+    image: ${VARIANT_NAME}-kernel-toolchain
+    container_name: ${VARIANT_NAME}-kernel-config
+    volumes:
+      - ../scripts/cachyos:/scripts:ro
+      - ${VARIANT_DIR}/patches:/patches
+    command:
+      - bash
+      - /scripts/generate-config-patch.sh
+
+  kernel-builder:
+    <<: *kernel-service
+    build:
+      <<: *kernel-build
+      args:
+        <<: *cachyos-build-args
+        FLAVOR: kernel
+        PATCH_FILE: ${KERNEL_PATCH_FILE:-kernel.patch}
+    image: ${VARIANT_NAME}-kernel-toolchain
+    container_name: ${VARIANT_NAME}-kernel-builder
+    volumes:
+      - ../scripts/cachyos:/scripts:ro
+      - ${VARIANT_DIR}/out:/out
+      - ${VARIANT_DIR}/patches/config.patch:/patches/config.patch:ro
+    command:
+      - bash
+      - /scripts/build-custom-kernel.sh

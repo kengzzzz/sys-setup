@@ -5,14 +5,14 @@ output_subdir="${1:?usage: build-cachyos-package.sh <output-subdir>}"
 
 mkdir -p /build/linux-cachyos "/out/${output_subdir}"
 cp -a /src/. /build/linux-cachyos/
-cd /build/linux-cachyos/linux-cachyos-lts
+cd "/build/linux-cachyos/${KERNEL_SOURCE_SUBDIR:?set KERNEL_SOURCE_SUBDIR}"
 chown -R builder:builder /build /out
 
 su builder -c "
   updpkgsums
   makepkg -o
-  cp /build/linux-cachyos/linux-cachyos-lts/config-*-profiler config
+  cp /build/linux-cachyos/${KERNEL_SOURCE_SUBDIR}/config-*-profiler config
   updpkgsums
-  makepkg -s --noconfirm --skippgpcheck
+  makepkg -e -s --noconfirm --skippgpcheck
   cp -v *.pkg.tar.zst /out/${output_subdir}/
 "
