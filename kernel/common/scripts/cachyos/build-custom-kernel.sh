@@ -12,6 +12,6 @@ su builder -c "
   mv ${KERNEL_CONFIG_GLOB:?set KERNEL_CONFIG_GLOB} config
   patch config < /patches/config.patch
   updpkgsums
-  makepkg -s --noconfirm --skippgpcheck
+  makepkg -e -s --noconfirm --skippgpcheck
   cp -v *.pkg.tar.zst /out/
 "
