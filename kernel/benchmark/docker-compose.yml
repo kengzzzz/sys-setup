@@ -1,0 +1,20 @@
+services:
+  benchmark:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    image: kernel-benchmark
+    container_name: kernel-benchmark
+    privileged: true
+    pid: host
+    tmpfs:
+      - /bench-tmp:rw,exec,size=4G,mode=1777
+    volumes:
+      - ./results:/results
+      - ./scripts:/scripts:ro
+    environment:
+      BENCH_LABEL: ${BENCH_LABEL:-local}
+      BENCH_PROFILE: ${BENCH_PROFILE:-balanced}
+      BENCH_RUNS: ${BENCH_RUNS:-3}
+      BENCH_BASELINE_LABEL: ${BENCH_BASELINE_LABEL:-cachyos-lts}
+      BENCH_BASELINE_PROFILE: ${BENCH_BASELINE_PROFILE:-balanced}

@@ -1,0 +1,127 @@
+--- PKGBUILD
++++ PKGBUILD
+@@ -79,7 +79,7 @@
+ # - "native" (use compiler autodetection)
+ # - "zen4" (Use znver4 compiler optimizations)
+ # - "generic" (kernel's default - to share the package between machines with different CPU µarch as long as they are x86-64)
+-: "${_processor_opt:=}"
++: "${_processor_opt:=native}"
+ 
+ # Clang LTO mode, only available with the "llvm" compiler - options are "none", "full" or "thin".
+ # ATTENTION - one of three predefined values should be selected!
+@@ -87,7 +87,7 @@
+ # "thin: uses multiple threads, faster and uses less memory, may have a lower runtime performance than Full."
+ # "thin-dist: Similar to thin, but uses a distributed model rather than in-process: https://discourse.llvm.org/t/rfc-distributed-thinlto-build-for-kernel/85934"
+ # "none: disable LTO
+-: "${_use_llvm_lto:=none}"
++: "${_use_llvm_lto:=thin}"
+ 
+ # Use suffix -lto only when requested by the user
+ # Enabled by default.
+@@ -115,7 +115,7 @@
+ # Builds the open nvidia module and package it into a own base
+ # This does replace the requirement of nvidia-open-dkms
+ # Use this only if you have Turing+ GPU
+-: "${_build_nvidia_open:=no}"
++: "${_build_nvidia_open:=yes}"
+ 
+ # Builds the r8125 module and package it into its own package
+ # Replaces requirement for r8125-dkms
+@@ -124,6 +124,32 @@
+ # Build a debug package with non-stripped vmlinux
+ : "${_build_debug:=no}"
+ 
++# Enable AUTOFDO_CLANG for the first compilation to create a kernel, which can be used for profiling
++# Workflow:
++# https://cachyos.org/blog/2411-kernel-autofdo/
++# 1. Compile Kernel with _autofdo=yes and _build_debug=yes
++# 2. Boot the kernel in QEMU or on your system, see Workload
++# 3. Profile the kernel and convert the profile, see Generating the Profile for AutoFDO
++# 4. Put the profile into the sourcedir
++# 5. Run kernel build again with the _autofdo_profile_name path to profile specified
++: "${_autofdo:=yes}"
++
++# Name for the AutoFDO profile
++: "${_autofdo_profile_name:=kernel.afdo}"
++
++# Propeller should be applied, after the kernel is optimized with AutoFDO
++# Workflow:
++# 1. Proceed with above AutoFDO Optimization, but enable at the final compilation also _propeller
++# 2. Boot into the AutoFDO Kernel and profile it
++# 3. Convert the profile into the propeller profile, example:
++# create_llvm_prof --binary=/usr/src/debug/linux-cachyos-rc/vmlinux --profile=propeller.data --format=propeller --propeller_output_module_name --out=propeller_cc_profile.txt --propeller_symorder=propeller_ld_profile.txt
++# 4. Place the propeller_cc_profile.txt and propeller_ld_profile.txt into the srcdir
++# 5. Enable _propeller_prefix
++: "${_propeller:=yes}"
++
++# Enable this after the profiles have been generated
++: "${_propeller_profiles:=yes}"
++
+ # ATTENTION: Do not modify after this line
+ _is_lto_kernel() {
+     [[ "$_use_llvm_lto" = "thin" || "$_use_llvm_lto" = "full"  || "$_use_llvm_lto" = "thin-dist" ]]
+@@ -135,13 +161,7 @@
+     return $?
+ }
+ 
+-if _is_lto_kernel && [ "$_use_lto_suffix" = "yes"  ]; then
+-    _pkgsuffix="cachyos-lts-lto"
+-elif ! _is_lto_kernel && [ "$_use_gcc_suffix" = "yes" ]; then
+-    _pkgsuffix="cachyos-lts-gcc"
+-else
+-    _pkgsuffix="cachyos-lts"
+-fi
++_pkgsuffix="eevdf-lto-prop"
+ 
+ pkgbase="linux-$_pkgsuffix"
+ _major=6.18
+@@ -222,6 +242,21 @@
+              "${_patchsource}/misc/nvidia/0002-Add-IBT-support.patch")
+ fi
+ 
++# Use generated AutoFDO Profile
++if [ "$_autofdo" = "yes" ] && [ -n "$_autofdo_profile_name" ]; then
++    if [ -e "$_autofdo_profile_name" ]; then
++        source+=("$_autofdo_profile_name")
++    else
++        _die "Failed to find file ${_autofdo_profile_name}"
++    fi
++fi
++
++# Use generated Propeller Profile
++if [ "$_propeller" = "yes" ] && [ "$_propeller_profiles" = "yes" ]; then
++    source+=(propeller_cc_profile.txt
++             propeller_ld_profile.txt)
++fi
++
+ if [ "$_build_r8125" = "yes" ]; then
+     source+=("git+https://github.com/aravance/r8125.git")
+ fi
+@@ -409,6 +444,27 @@
+ 
+     echo "Selecting '$_hugepage' TRANSPARENT_HUGEPAGE config..."
+ 
++    # Enable Clang AutoFDO
++    # Add additonal check if Thin or Full LTO is enabled otherwise die
++    if [ "$_autofdo" = "yes" ]; then
++        scripts/config -e AUTOFDO_CLANG
++    fi
++
++    if [ "$_autofdo" = "yes" ] && [ -n "$_autofdo_profile_name" ]; then
++        echo "AutoFDO profile has been found..."
++        BUILD_FLAGS+=(CLANG_AUTOFDO_PROFILE="${srcdir}/${_autofdo_profile_name}")
++    fi
++
++    # Propeller Optimization
++    if [ "$_propeller" = "yes" ]; then
++        scripts/config -e PROPELLER_CLANG
++    fi
++
++    if [ "$_propeller" = "yes" ] && [ "$_propeller_profiles" = "yes" ]; then
++        echo "Propeller profile has been found..."
++        BUILD_FLAGS+=(CLANG_PROPELLER_PROFILE_PREFIX="${srcdir}/propeller")
++    fi
++
+     echo "Enable USER_NS_UNPRIVILEGED"
+     scripts/config -e USER_NS
+ 
