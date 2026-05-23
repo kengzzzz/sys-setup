@@ -19,6 +19,8 @@ BENCH_LABEL=eevdf-lto-prop BENCH_BASELINE_LABEL=cachyos-lts docker compose run -
 ```
 
 Reports are written to `results/`. The latest report is copied to `results/latest.md`.
+By default, reports compare against the newest `BENCH_BASELINE_LABEL` run with the
+same profile as the current run.
 
 ## Profiles
 

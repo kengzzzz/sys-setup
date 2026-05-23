@@ -60,7 +60,7 @@ def summarize(rows):
     }
 
 
-def latest_baseline(results_dir, current_csv, label, profile, current_label):
+def latest_baseline(results_dir, current_csv, label, profile, current_label, current_profile):
     if not label or label == current_label:
         return None
 
@@ -77,7 +77,8 @@ def latest_baseline(results_dir, current_csv, label, profile, current_label):
         first = rows[0]
         if first.get("label") != label:
             continue
-        if profile != "any" and first.get("profile") != profile:
+        target_profile = current_profile if profile == "same" else profile
+        if target_profile != "any" and first.get("profile") != target_profile:
             continue
         matches.append((first.get("timestamp", ""), path, rows))
 
@@ -112,10 +113,12 @@ def render(args):
         args.baseline_label,
         args.baseline_profile,
         first["label"],
+        first["profile"],
     )
 
     baseline_summary = {}
-    baseline_line = "Compared to: `none`"
+    is_baseline_run = args.baseline_label and args.baseline_label == first["label"]
+    baseline_line = "This run is the baseline." if is_baseline_run else "Compared to: `none`"
     if baseline_match:
         _, baseline_path, baseline_rows = baseline_match
         baseline_summary = summarize(baseline_rows)
@@ -139,13 +142,13 @@ def render(args):
         f"- Profile: `{first['profile']}`",
         f"- CSV: `{current_csv.name}`",
         f"- Baseline label: `{args.baseline_label}`",
-        f"- Baseline profile: `{args.baseline_profile}`",
+        f"- Baseline profile: `{first['profile'] if args.baseline_profile == 'same' else args.baseline_profile}`",
         f"- {baseline_line}",
         "",
         "Positive change means this run is better than the baseline after applying each metric's better direction.",
     ]
 
-    if not baseline_match:
+    if not baseline_match and not is_baseline_run:
         lines.extend(
             [
                 "",
@@ -189,7 +192,7 @@ def main():
     parser.add_argument("--output", required=True)
     parser.add_argument("--results-dir", required=True)
     parser.add_argument("--baseline-label", default="cachyos-lts")
-    parser.add_argument("--baseline-profile", default="balanced")
+    parser.add_argument("--baseline-profile", default="same")
     args = parser.parse_args()
     render(args)
 

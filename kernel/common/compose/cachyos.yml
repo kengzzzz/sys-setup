@@ -27,6 +27,7 @@ x-profiler-build: &profiler-build
     <<: *cachyos-build-args
 
 x-kernel-service: &kernel-service
+  network_mode: host
   environment:
     <<: *cachyos-env
   tmpfs: *common-tmpfs

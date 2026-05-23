@@ -31,6 +31,7 @@ x-propeller-profiler-build: &propeller-profiler-build
 
 services:
   kernel-propeller:
+    network_mode: host
     environment:
       <<: *propeller-env
     tmpfs: *propeller-tmpfs

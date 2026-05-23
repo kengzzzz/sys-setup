@@ -1,10 +1,10 @@
 # Kernel benchmark summary
 
-- Kernel: `6.18.32-1-eevdf-flto-pgo`
+- Kernel: `7.0.9-1-eevdf-flto-pgo`
 - Label: `eevdf-flto-pgo`
-- Profile: `balanced`
+- Profile: `full`
 - Baseline label: `cachyos-lts`
-- Baseline profile: `balanced`
+- Baseline profile: `full`
 - Compared to: `cachyos-lts` on `6.18.32-1-cachyos-lts`
 
 Positive change means this run is better than the baseline after applying each metric's better direction.
@@ -13,30 +13,30 @@ Positive change means this run is better than the baseline after applying each m
 
 | Metric | Current median | Baseline median | Change vs baseline | Unit | Failed |
 | --- | ---: | ---: | ---: | --- | ---: |
-| dav1d decode | 0.5200 | 0.5300 | +1.89% better | seconds | 0 |
-| x265 encode | 7.8600 | 7.8600 | +0.00% better | seconds | 0 |
-| 7zip | 264101.00 | 264074.00 | +0.01% better | MIPS | 0 |
-| sysbench cpu | 40654.62 | 40682.63 | -0.07% worse | events/sec | 0 |
-| stress-ng matrix | 121011.98 | 121232.78 | -0.18% worse | bogo ops/sec | 0 |
-| openssl sha256 | 2765733890.00 | 2765206320.00 | +0.02% better | bytes/sec | 0 |
+| dav1d decode | 0.5100 | 0.5300 | +3.77% better | seconds | 0 |
+| x265 encode | 7.6100 | 7.9700 | +4.52% better | seconds | 0 |
+| 7zip | 264196.00 | 261415.00 | +1.06% better | MIPS | 0 |
+| sysbench cpu | 40267.40 | 40218.57 | +0.12% better | events/sec | 0 |
+| stress-ng matrix | 120265.37 | 119931.61 | +0.28% better | bogo ops/sec | 0 |
+| openssl sha256 | 2763833340.00 | 2761244670.00 | +0.09% better | bytes/sec | 0 |
 | zstd compress | 0.0500 | 0.0500 | +0.00% better | seconds | 0 |
 
 ## Scheduler
 
 | Metric | Current median | Baseline median | Change vs baseline | Unit | Failed |
 | --- | ---: | ---: | ---: | --- | ---: |
-| stress-ng switch | 22440668.64 | 19587865.43 | +14.56% better | bogo ops/sec | 0 |
-| stress-ng futex | 4587745.15 | 4757025.69 | -3.56% worse | bogo ops/sec | 0 |
-| schbench p99 | 21984.00 | 22048.00 | +0.29% better | usec | 0 |
-| hackbench | 0.1830 | 0.2080 | +12.02% better | seconds | 0 |
-| cyclictest max | 13.000 | 13.000 | +0.00% better | usec | 0 |
+| stress-ng switch | 20148801.90 | 19528911.88 | +3.17% better | bogo ops/sec | 0 |
+| stress-ng futex | 4374187.42 | 4837731.66 | -9.58% worse | bogo ops/sec | 0 |
+| schbench p99 | 22304.00 | 22112.00 | -0.87% worse | usec | 0 |
+| hackbench | 0.2120 | 0.2120 | +0.00% better | seconds | 0 |
+| cyclictest max | 11.000 | 11.000 | +0.00% better | usec | 0 |
 
 ## Memory and filesystem
 
 | Metric | Current median | Baseline median | Change vs baseline | Unit | Failed |
 | --- | ---: | ---: | ---: | --- | ---: |
-| stress-ng vm | 1403557.55 | 1400886.36 | +0.19% better | bogo ops/sec | 0 |
-| fio randread | 23191.99 | 23147.59 | +0.19% better | IOPS | 0 |
-| fio randwrite | 782802.95 | 763734.62 | +2.50% better | IOPS | 0 |
-| fio seqread | 11788.61 | 9846.61 | +19.72% better | IOPS | 0 |
-| fio seqwrite | 6673.82 | 6695.49 | -0.32% worse | IOPS | 0 |
+| stress-ng vm | 1416295.26 | 1406163.11 | +0.72% better | bogo ops/sec | 0 |
+| fio randread | 22166.73 | 22265.92 | -0.45% worse | IOPS | 0 |
+| fio randwrite | 755470.83 | 753819.74 | +0.22% better | IOPS | 0 |
+| fio seqread | 11171.39 | 10128.50 | +10.30% better | IOPS | 0 |
+| fio seqwrite | 7189.89 | 6671.10 | +7.78% better | IOPS | 0 |
