@@ -64,7 +64,7 @@
  #_stablerc=${_major}-${_rcver}
  _srctag=cachyos-${_major}.${_minor}-${_tagrel}
  _srcname=${_srctag}
--pkgdesc='Linux BORE + Cachy Sauce Kernel by CachyOS with other patches and improvements - Long Term Service'
+-pkgdesc='Linux EEVDF + Cachy Sauce Kernel by CachyOS with other patches and improvements - Long Term Service'
 +pkgdesc='Linux EEVDF + ThinLTO + AutoFDO + Propeller with other patches and improvements by CachyOS.'
  _kernver="$pkgver-$pkgrel"
  _kernuname="${pkgver}-${_pkgsuffix}"
