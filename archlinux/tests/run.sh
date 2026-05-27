@@ -50,11 +50,11 @@ LinkLocalAddressing=ipv6
 RequiredForOnline=yes'
 assert_eq "$expected_network" "$(render_static_network enp14s0 192.168.0.10/24 192.168.0.1 192.168.0.3)" "static network rendering"
 
-expected_boot='title Arch Linux (linux-eevdf-flto-pgo)
-linux /vmlinuz-linux-eevdf-flto-pgo
-initrd /initramfs-linux-eevdf-flto-pgo.img
+expected_boot='title Arch Linux (linux-bore-flto-pgo)
+linux /vmlinuz-linux-bore-flto-pgo
+initrd /initramfs-linux-bore-flto-pgo.img
 options root=PARTUUID=abc-123 rw nvidia-drm.modeset=1 nvidia-drm.fbdev=1'
-assert_eq "$expected_boot" "$(render_boot_entry linux-eevdf-flto-pgo linux-eevdf-flto-pgo abc-123)" "boot entry rendering"
+assert_eq "$expected_boot" "$(render_boot_entry linux-bore-flto-pgo linux-bore-flto-pgo abc-123)" "boot entry rendering"
 
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
@@ -83,10 +83,10 @@ if printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx 'nvidia-open-dkms'; then
     exit 1
 fi
 
-PRIMARY_KERNEL=linux-eevdf-flto-pgo
+PRIMARY_KERNEL=linux-bore-flto-pgo
 CUSTOM_KERNEL_PACKAGES_DIR="$tmpdir/packages"
 mkdir -p "$CUSTOM_KERNEL_PACKAGES_DIR"
-touch "$CUSTOM_KERNEL_PACKAGES_DIR/linux-eevdf-flto-pgo-1-1-x86_64.pkg.tar.zst"
+touch "$CUSTOM_KERNEL_PACKAGES_DIR/linux-bore-flto-pgo-1-1-x86_64.pkg.tar.zst"
 validate_custom_kernel_packages
 assert_eq "1" "${#CUSTOM_KERNEL_PACKAGES[@]}" "custom kernel package validation"
 

@@ -11,7 +11,7 @@ Boot an Arch ISO, connect networking, then run:
 curl -fsSL https://raw.githubusercontent.com/kengzzzz/sys-setup/main/archlinux.sh | bash
 ```
 
-The installer is opinionated for my workstation: custom `linux-eevdf-flto-pgo`
+The installer is opinionated for my workstation: custom `linux-bore-flto-pgo`
 primary kernel, CachyOS LTS fallback kernel, systemd-networkd, systemd-boot,
 Hyprland desktop packages, YubiKey PAM auth, and private dotfiles setup.
 

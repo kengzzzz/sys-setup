@@ -4,7 +4,7 @@ Active kernel folders are thin variant workspaces. Run Docker Compose from the
 variant directory:
 
 ```sh
-cd kernel/eevdf-flto-pgo
+cd kernel/bore-flto-pgo
 docker compose run --rm kernel-builder
 ```
 
