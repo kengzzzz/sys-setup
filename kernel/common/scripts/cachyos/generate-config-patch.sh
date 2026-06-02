@@ -8,7 +8,7 @@ chown -R builder:builder /patches /build
 
 su builder -c "
   updpkgsums
-  makepkg -o
+  makepkg -o --skippgpcheck
   cd /build/linux-cachyos/${KERNEL_SOURCE_SUBDIR}/src/cachyos-*/
   cp /build/linux-cachyos/${KERNEL_SOURCE_SUBDIR}/${KERNEL_CONFIG_GLOB:?set KERNEL_CONFIG_GLOB} .config
   LLVM=1 LLVM_IAS=1 make menuconfig

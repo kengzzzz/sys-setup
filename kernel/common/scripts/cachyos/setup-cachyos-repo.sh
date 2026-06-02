@@ -194,3 +194,6 @@ fi
 
 msg "Configuring CachyOS ${repo_flavor} repository"
 configure_pacman "${repo_flavor}"
+
+msg "Clearing bootstrap sync databases"
+rm -f /var/lib/pacman/sync/*.db /var/lib/pacman/sync/*.db.sig

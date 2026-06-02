@@ -8,7 +8,7 @@ chown -R builder:builder /out /build
 
 su builder -c "
   updpkgsums
-  makepkg -o
+  makepkg -o --skippgpcheck
   mv ${KERNEL_CONFIG_GLOB:?set KERNEL_CONFIG_GLOB} config
   patch config < /patches/config.patch
   updpkgsums

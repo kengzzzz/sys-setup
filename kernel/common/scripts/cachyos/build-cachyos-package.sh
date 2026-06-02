@@ -10,7 +10,7 @@ chown -R builder:builder /build /out
 
 su builder -c "
   updpkgsums
-  makepkg -o
+  makepkg -o --skippgpcheck
   cp /build/linux-cachyos/${KERNEL_SOURCE_SUBDIR}/config-*-profiler config
   updpkgsums
   makepkg -e -s --noconfirm --skippgpcheck
