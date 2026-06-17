@@ -3,8 +3,8 @@ set -Eeuo pipefail
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 
-# shellcheck source=lib/common.sh
-source "$SCRIPT_DIR/lib/common.sh"
+# shellcheck source=../lib/common.sh
+source "$SCRIPT_DIR/../lib/common.sh"
 # shellcheck source=lib/config.sh
 source "$SCRIPT_DIR/lib/config.sh"
 # shellcheck source=lib/disk.sh
@@ -65,15 +65,18 @@ copy_installer_to_target() {
     section "Copying installer into target"
     local target_dir=/mnt/root/sys-setup-install
     rm -rf "$target_dir"
-    mkdir -p "$target_dir"
-    cp -a "$SCRIPT_DIR/." "$target_dir/"
-    write_chroot_env "$target_dir/install.env"
-    chmod +x "$target_dir/install.sh" "$target_dir/chroot.sh"
+    # Mirror the repo layout in the target so chroot.sh resolves ../lib/common.sh
+    # the same way it does in the source tree.
+    mkdir -p "$target_dir/archlinux"
+    cp -a "$SCRIPT_DIR/." "$target_dir/archlinux/"
+    cp -a "$SCRIPT_DIR/../lib" "$target_dir/lib"
+    write_chroot_env "$target_dir/archlinux/install.env"
+    chmod +x "$target_dir/archlinux/install.sh" "$target_dir/archlinux/chroot.sh"
 }
 
 run_chroot_install() {
     section "Running chroot install"
-    retry arch-chroot /mnt /root/sys-setup-install/chroot.sh
+    retry arch-chroot /mnt /root/sys-setup-install/archlinux/chroot.sh
 }
 
 main() {

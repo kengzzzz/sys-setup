@@ -11,8 +11,8 @@ source "$ROOT_DIR/lib/network.sh"
 source "$ROOT_DIR/lib/auth.sh"
 # shellcheck source=../lib/boot.sh
 source "$ROOT_DIR/lib/boot.sh"
-# shellcheck source=../lib/common.sh
-source "$ROOT_DIR/lib/common.sh"
+# shellcheck source=../../lib/common.sh
+source "$ROOT_DIR/../lib/common.sh"
 # shellcheck source=../lib/packages.sh
 source "$ROOT_DIR/lib/packages.sh"
 
