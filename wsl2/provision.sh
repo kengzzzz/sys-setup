@@ -124,7 +124,7 @@ install_packages() {
     export DEBIAN_FRONTEND=noninteractive
     retry apt-get update
     retry apt-get install -y --no-install-recommends \
-        zsh git stow build-essential curl ca-certificates locales socat sudo gnupg
+        zsh git stow build-essential curl ca-certificates locales socat sudo gnupg bubblewrap
 }
 
 configure_locale() {
