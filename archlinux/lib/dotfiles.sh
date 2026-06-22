@@ -104,6 +104,21 @@ stow_dotfiles() {
     "
 }
 
+configure_default_browser() {
+    section "Configuring default browser"
+    runuser -u "$INSTALL_USER" -- bash -lc '
+        set -euo pipefail
+        xdg-settings set default-web-browser librewolf.desktop || true
+        xdg-mime default librewolf.desktop \
+            text/html \
+            application/xhtml+xml \
+            x-scheme-handler/http \
+            x-scheme-handler/https \
+            x-scheme-handler/about \
+            x-scheme-handler/unknown
+    '
+}
+
 install_dotfiles_system_files() {
     section "Installing dotfiles system files"
     local dot_dir=$DOTFILES_DIR
@@ -140,5 +155,6 @@ run_dotfiles_install() {
     clone_dotfiles
     install_zsh_plugins
     stow_dotfiles
+    configure_default_browser
     install_dotfiles_system_files
 }

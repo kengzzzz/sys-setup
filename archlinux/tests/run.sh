@@ -83,6 +83,15 @@ if printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx 'nvidia-open-dkms'; then
     exit 1
 fi
 
+if ! printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx 'librewolf-bin'; then
+    printf 'FAIL: librewolf-bin should be in official package list\n' >&2
+    exit 1
+fi
+if printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx 'firefox'; then
+    printf 'FAIL: firefox should not be in official package list\n' >&2
+    exit 1
+fi
+
 PRIMARY_KERNEL=linux-bore-flto-pgo
 CUSTOM_KERNEL_PACKAGES_DIR="$tmpdir/packages"
 mkdir -p "$CUSTOM_KERNEL_PACKAGES_DIR"
