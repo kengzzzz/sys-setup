@@ -19,7 +19,7 @@ OFFICIAL_PACKAGES=(
     greetd greetd-regreet cage hyprland swaybg swaylock swayidle swayimg mate-polkit
     waybar swaync xdg-desktop-portal-hyprland xdg-desktop-portal-gtk
     qt5ct qt6ct papirus-icon-theme thunar gvfs tumbler kitty cliphist grim slurp swappy hyprpicker
-    pipewire pipewire-pulse wireplumber pavucontrol blueman librewolf-bin mpv playerctl qalculate-gtk
+    pipewire pipewire-pulse wireplumber pavucontrol blueman helium-browser-bin mpv playerctl qalculate-gtk
     nvidia-utils lib32-nvidia-utils egl-gbm libva-nvidia-driver cpupower
     zsh zsh-completions zsh-syntax-highlighting imagemagick tesseract tesseract-data-eng tesseract-data-tha ffmpegthumbnailer
     ttf-jetbrains-mono-nerd ttf-nerd-fonts-symbols-common ttf-ibm-plex

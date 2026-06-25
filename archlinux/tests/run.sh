@@ -83,8 +83,8 @@ if printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx 'nvidia-open-dkms'; then
     exit 1
 fi
 
-if ! printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx 'librewolf-bin'; then
-    printf 'FAIL: librewolf-bin should be in official package list\n' >&2
+if ! printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx 'helium-browser-bin'; then
+    printf 'FAIL: helium-browser-bin should be in official package list\n' >&2
     exit 1
 fi
 if printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx 'firefox'; then

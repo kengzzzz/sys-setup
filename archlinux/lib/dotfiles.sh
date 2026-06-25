@@ -108,8 +108,8 @@ configure_default_browser() {
     section "Configuring default browser"
     runuser -u "$INSTALL_USER" -- bash -lc '
         set -euo pipefail
-        xdg-settings set default-web-browser librewolf.desktop || true
-        xdg-mime default librewolf.desktop \
+        xdg-settings set default-web-browser helium.desktop || true
+        xdg-mime default helium.desktop \
             text/html \
             application/xhtml+xml \
             x-scheme-handler/http \
