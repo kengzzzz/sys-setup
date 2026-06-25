@@ -34,6 +34,7 @@ param(
     [string]$DotfilesRepo   = 'git@github.com:kengzzzz/dotfiles.git',
     [string]$DotfilesBranch = 'main',
     [string]$NpiperelayPath = "$env:USERPROFILE\npiperelay.exe",
+    [string]$SshSkProvider  = 'internal',
     [switch]$SkipDotfiles
 )
 
@@ -53,6 +54,22 @@ function Write-Step { param([string]$m) Write-Host "==> $m" -ForegroundColor Cya
 function Write-Note { param([string]$m) Write-Host "    $m" }
 function Write-Warn2 { param([string]$m) Write-Host "warning: $m" -ForegroundColor Yellow }
 function Die { param([string]$m) Write-Host "error: $m" -ForegroundColor Red; exit 1 }
+
+# Run a native exe WITHOUT letting its stderr abort the script. Under
+# $ErrorActionPreference='Stop' PowerShell promotes any native-command stderr to
+# a terminating error (even with 2>$null), which would kill an otherwise-optional
+# step. Returns the process exit code; never throws on stderr.
+function Invoke-Native {
+    param([Parameter(Mandatory)][string]$Exe, [string[]]$Arguments = @())
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $Exe @Arguments
+        return $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $prev
+    }
+}
 
 # --- preflight ---------------------------------------------------------------
 function Test-Admin {
@@ -90,22 +107,44 @@ function Test-DistroInstalled {
 # --- Windows ssh-agent / YubiKey ---------------------------------------------
 function Initialize-WindowsSshAgent {
     Write-Step 'Preparing the Windows ssh-agent for the YubiKey'
-    if (-not (Get-Command ssh-add.exe -ErrorAction SilentlyContinue)) {
-        Write-Warn2 'OpenSSH client (ssh-add) not found. Install "OpenSSH Client" from Windows optional features, then re-run with dotfiles.'
+
+    # Use the Windows OpenSSH ssh-add explicitly. The in-distro bridge forwards the
+    # Windows ssh-agent service pipe (//./pipe/openssh-ssh-agent); a ssh-add from
+    # Git/MSYS on PATH would load the key into a different (cygwin) agent the bridge
+    # can't see, so the dotfiles clone would still fail.
+    $sshAdd = Join-Path $env:SystemRoot 'System32\OpenSSH\ssh-add.exe'
+    if (-not (Test-Path $sshAdd)) {
+        $cmd = Get-Command ssh-add.exe -ErrorAction SilentlyContinue
+        if ($cmd) { $sshAdd = $cmd.Source }
+    }
+    if (-not (Test-Path $sshAdd)) {
+        Write-Warn2 'Windows OpenSSH ssh-add not found. Install "OpenSSH Client" from Windows optional features, then re-run with dotfiles.'
         return $false
     }
+
     try {
         Set-Service ssh-agent -StartupType Automatic
         Start-Service ssh-agent
     } catch { Write-Warn2 "could not start ssh-agent service: $_" }
 
-    Write-Note 'Insert your YubiKey and touch it when it blinks...'
-    & ssh-add.exe -K 2>$null | Out-Null   # load FIDO resident keys from the security key
-    & ssh-add.exe -l 2>$null | Out-Null
-    if ($LASTEXITCODE -ne 0) {
+    # `ssh-add -K` downloads the YubiKey's *resident* FIDO key, but that needs an SK
+    # provider. Windows OpenSSH has built-in support, selected with
+    # SSH_SK_PROVIDER=internal; without it ssh-add dies "Cannot download keys without
+    # provider". Honor an existing value if the user already set one.
+    if (-not $env:SSH_SK_PROVIDER) { $env:SSH_SK_PROVIDER = $SshSkProvider }
+    Write-Note "using SSH_SK_PROVIDER=$env:SSH_SK_PROVIDER"
+
+    Write-Note 'Insert your YubiKey and touch it when it blinks (you may be asked for its PIN)...'
+    $rc = Invoke-Native -Exe $sshAdd -Arguments @('-K')   # load FIDO resident keys
+    if ($rc -ne 0) {
+        Write-Warn2 "ssh-add -K could not load the YubiKey key (exit $rc); dotfiles may be skipped."
+    }
+
+    if ((Invoke-Native -Exe $sshAdd -Arguments @('-l')) -ne 0) {
         Write-Warn2 'No keys are loaded in the Windows ssh-agent. Dotfiles may be skipped in the distro.'
         return $false
     }
+    Write-Note 'A key is loaded in the Windows ssh-agent.'
     return $true
 }
 
