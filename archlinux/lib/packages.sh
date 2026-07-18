@@ -23,8 +23,8 @@ OFFICIAL_PACKAGES=(
     nvidia-utils lib32-nvidia-utils egl-gbm libva-nvidia-driver cpupower
     zsh zsh-completions zsh-syntax-highlighting imagemagick tesseract tesseract-data-eng tesseract-data-tha ffmpegthumbnailer
     ttf-jetbrains-mono-nerd ttf-nerd-fonts-symbols-common ttf-ibm-plex
-    btop eza fastfetch wakeonlan freerdp bc cmake cpio docker bubblewrap drawing gpu-screen-recorder
-    pacman-contrib python-pywal rofi sbctl sbsigntools socat steam stow tailscale docker-compose
+    btop eza fastfetch freerdp jq bc cmake cpio docker bubblewrap kolourpaint gpu-screen-recorder
+    pacman-contrib cachyos-settings python-pywal rofi sbctl sbsigntools socat steam stow tailscale docker-compose
     docker-buildx accountsservice python-dbus vscodium nwg-look gpu-screen-recorder-ui vesktop pam-u2f
 )
 
