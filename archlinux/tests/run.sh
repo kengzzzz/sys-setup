@@ -92,11 +92,42 @@ if printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx 'firefox'; then
     exit 1
 fi
 
+if printf '%s\n' "${BASE_PACKAGES[@]}" | grep -qx 'base-devel'; then
+    printf 'FAIL: base-devel should not be in base package list (no host toolchain)\n' >&2
+    exit 1
+fi
+for pkg in fakeroot binutils sudo; do
+    if ! printf '%s\n' "${BASE_PACKAGES[@]}" | grep -qx "$pkg"; then
+        printf 'FAIL: %s must stay in base package list; makepkg breaks without it\n' "$pkg" >&2
+        exit 1
+    fi
+done
+for pkg in cmake gcc clang rust; do
+    if printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx "$pkg"; then
+        printf 'FAIL: %s should not be in official package list (no host toolchain)\n' "$pkg" >&2
+        exit 1
+    fi
+done
+if ! printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx 'paru'; then
+    printf 'FAIL: paru must come prebuilt from the repo, not be built from AUR\n' >&2
+    exit 1
+fi
+
 PRIMARY_KERNEL=linux-bore-flto-pgo
 CUSTOM_KERNEL_PACKAGES_DIR="$tmpdir/packages"
 mkdir -p "$CUSTOM_KERNEL_PACKAGES_DIR"
 touch "$CUSTOM_KERNEL_PACKAGES_DIR/linux-bore-flto-pgo-1-1-x86_64.pkg.tar.zst"
 validate_custom_kernel_packages
 assert_eq "1" "${#CUSTOM_KERNEL_PACKAGES[@]}" "custom kernel package validation"
+
+touch "$CUSTOM_KERNEL_PACKAGES_DIR/linux-bore-flto-pgo-headers-1-1-x86_64.pkg.tar.zst"
+touch "$CUSTOM_KERNEL_PACKAGES_DIR/linux-bore-flto-pgo-dbg-1-1-x86_64.pkg.tar.zst"
+touch "$CUSTOM_KERNEL_PACKAGES_DIR/linux-bore-flto-pgo-nvidia-open-1-1-x86_64.pkg.tar.zst"
+validate_custom_kernel_packages
+assert_eq "2" "${#CUSTOM_KERNEL_PACKAGES[@]}" "kernel package glob excludes headers and dbg"
+if printf '%s\n' "${CUSTOM_KERNEL_PACKAGES[@]}" | grep -q -- '-headers-\|-dbg-'; then
+    printf 'FAIL: kernel package glob picked up -headers or -dbg\n' >&2
+    exit 1
+fi
 
 printf 'archlinux installer tests passed\n'

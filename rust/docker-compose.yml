@@ -1,0 +1,67 @@
+x-rust-build-args: &rust-build-args
+  ARCH_IMAGE_DIGEST: ${ARCH_IMAGE_DIGEST:-sha256:592e11bd99ab579f933a0cb77a8f66e2f3ae57f5eafacf13aea44a6e98ef21ae}
+  LOCAL_UID: ${LOCAL_UID:-1000}
+  LOCAL_GID: ${LOCAL_GID:-1000}
+
+x-rust-service: &rust-service
+  build:
+    context: .
+    dockerfile: Dockerfile
+    args: *rust-build-args
+  image: rust-toolchain
+  user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+  working_dir: /work
+  environment:
+    CARGO_HOME: /cargo
+    CARGO_TARGET_DIR: /target
+    HOME: /home/dev
+    CARGO_TERM_COLOR: always
+  volumes:
+    - ${PROJECT_DIR:?set PROJECT_DIR to the crate you are working on}:/work
+    - ${PROJECT_DIR}/out:/out
+    - cargo-registry:/cargo
+    - target:/target
+    - home-dev:/home/dev
+
+services:
+  dev:
+    <<: *rust-service
+    container_name: rust-dev
+    stdin_open: true
+    tty: true
+    command: [bash]
+
+  check:
+    <<: *rust-service
+    container_name: rust-check
+    command:
+      - bash
+      - -euo
+      - pipefail
+      - -c
+      - |
+        cargo fmt --check
+        cargo clippy --all-targets --locked -- -D warnings
+        cargo test --locked
+
+  release:
+    <<: *rust-service
+    container_name: rust-release
+    command:
+      - bash
+      - -euo
+      - pipefail
+      - -c
+      - |
+        cargo build --release --locked
+        install -Dm755 "/target/release/${BIN_NAME:?set BIN_NAME}" \
+          "/out/${BIN_NAME}"
+        echo "wrote ./out/${BIN_NAME}"
+
+volumes:
+  cargo-registry:
+    name: rust-cargo-registry
+  home-dev:
+    name: rust-home-dev
+  target:
+    name: rust-target-${PROJECT_SLUG:?set PROJECT_SLUG}

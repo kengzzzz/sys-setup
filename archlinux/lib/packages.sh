@@ -2,7 +2,6 @@
 
 BASE_PACKAGES=(
     base
-    base-devel
     linux-firmware
     git
     openssh
@@ -12,6 +11,12 @@ BASE_PACKAGES=(
     ccid
     sudo
     xfsprogs
+    fakeroot
+    binutils
+    make
+    patch
+    pkgconf
+    which
 )
 
 OFFICIAL_PACKAGES=(
@@ -23,8 +28,9 @@ OFFICIAL_PACKAGES=(
     nvidia-utils lib32-nvidia-utils egl-gbm libva-nvidia-driver cpupower
     zsh zsh-completions zsh-syntax-highlighting imagemagick tesseract tesseract-data-eng tesseract-data-tha ffmpegthumbnailer
     ttf-jetbrains-mono-nerd ttf-nerd-fonts-symbols-common ttf-ibm-plex
-    btop eza fastfetch freerdp jq bc cmake cpio docker bubblewrap kolourpaint gpu-screen-recorder
+    btop eza fastfetch freerdp jq bc cpio docker bubblewrap kolourpaint gpu-screen-recorder
     pacman-contrib cachyos-settings python-pywal rofi sbctl sbsigntools socat steam stow tailscale docker-compose
+    paru
     docker-buildx accountsservice python-dbus vscodium nwg-look gpu-screen-recorder-ui vesktop pam-u2f
 )
 
@@ -85,7 +91,10 @@ validate_custom_kernel_packages() {
     [[ -d $CUSTOM_KERNEL_PACKAGES_DIR ]] || die "custom kernel packages directory not found: $CUSTOM_KERNEL_PACKAGES_DIR"
 
     shopt -s nullglob
-    CUSTOM_KERNEL_PACKAGES=("$CUSTOM_KERNEL_PACKAGES_DIR"/"${PRIMARY_KERNEL}"*.pkg.tar.zst)
+    CUSTOM_KERNEL_PACKAGES=(
+        "$CUSTOM_KERNEL_PACKAGES_DIR"/"${PRIMARY_KERNEL}"-[0-9]*.pkg.tar.zst
+        "$CUSTOM_KERNEL_PACKAGES_DIR"/"${PRIMARY_KERNEL}"-nvidia-open-[0-9]*.pkg.tar.zst
+    )
     shopt -u nullglob
 
     ((${#CUSTOM_KERNEL_PACKAGES[@]} > 0)) || die "no custom kernel packages found in $CUSTOM_KERNEL_PACKAGES_DIR"

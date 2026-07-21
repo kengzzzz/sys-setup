@@ -2,33 +2,19 @@
 
 configure_makepkg() {
     section "Configuring makepkg.conf"
-    sed -i 's/-O2/-O3 -march=native/g' /etc/makepkg.conf
-    sed -i '/^CFLAGS=/ s/-O3/-O3 -ffunction-sections -fdata-sections/' /etc/makepkg.conf
     sed -i 's/ debug / !debug /g' /etc/makepkg.conf
     sed -i 's|^#BUILDDIR=/tmp/makepkg|BUILDDIR=/tmp/makepkg|g' /etc/makepkg.conf
-    sed -i 's/-Wl,-z,pack-relative-relocs/& -Wl,--gc-sections/g' /etc/makepkg.conf
-
-    if ! grep -q '^RUSTFLAGS=' /etc/makepkg.conf; then
-        cat >>/etc/makepkg.conf <<'EOF'
-
-RUSTFLAGS="-C opt-level=3 -C target-cpu=native -C codegen-units=1 \
-           -C link-arg=-z -C link-arg=pack-relative-relocs \
-           -C link-arg=-Wl,--gc-sections"
-EOF
-    fi
 }
 
 install_aur_packages_as_user() {
     section "Installing AUR packages"
-    rm -rf /tmp/paru
     runuser -u "$INSTALL_USER" -- bash -lc '
         set -euo pipefail
-        if ! command -v paru >/dev/null 2>&1; then
-            git clone https://aur.archlinux.org/paru.git /tmp/paru
-            cd /tmp/paru
-            makepkg -si --noconfirm
-        fi
-        paru -S --noconfirm --needed tokyonight-gtk-theme-git hypr-kblayoutd-git
+        command -v paru >/dev/null 2>&1 || {
+            printf "paru not found; expected it from the cachyos repo\n" >&2
+            exit 1
+        }
+        paru -S --noconfirm --needed tokyonight-gtk-theme-git hypr-kblayoutd-bin
     '
 }
 
