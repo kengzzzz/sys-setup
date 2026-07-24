@@ -14,7 +14,7 @@ install_aur_packages_as_user() {
             printf "paru not found; expected it from the cachyos repo\n" >&2
             exit 1
         }
-        paru -S --noconfirm --needed tokyonight-gtk-theme-git hypr-kblayoutd-bin
+        paru -S --noconfirm --needed tokyonight-gtk-theme-git hypr-kblayoutd-bin catppuccin-cursors-mocha
     '
 }
 
@@ -79,6 +79,8 @@ stow_dotfiles() {
         set -euo pipefail
         cd '$DOTFILES_DIR'
         rm -f ~/.zshrc
+        # keep stow folding at icons/default so app-installed icon dirs stay out of the repo
+        mkdir -p ~/.local/share/icons
         for dir in *; do
             [[ -d \"\$dir\" ]] || continue
             case \"\$dir\" in
