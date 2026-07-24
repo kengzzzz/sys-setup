@@ -7,8 +7,9 @@ cd /build/linux-rpi
 chown -R builder:builder /out /build
 
 su builder -c "
+  set -eu
   make bcm2712_defconfig
-  patch .config < /patches/config.patch
+  patch --fuzz=0 .config < /patches/config.patch
   make -j\$(nproc) Image.gz modules dtbs KCFLAGS='-mcpu=native'
   make -j\$(nproc) INSTALL_MOD_PATH=/out modules_install
   cp arch/arm64/boot/Image /out/kernel_2712.img
