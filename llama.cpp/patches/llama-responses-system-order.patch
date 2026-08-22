@@ -1,0 +1,108 @@
+diff --git a/common/chat.cpp b/common/chat.cpp
+--- a/common/chat.cpp
++++ b/common/chat.cpp
+@@ -2962,6 +2962,54 @@ static void map_developer_role_to_system(json & messages) {
+     }
+ }
+ 
++// Some templates accept the system role only for the first message. Responses
++// clients may add developer instructions later in a replay; after mapping the
++// developer role to system, merge those instructions into one leading message.
++static void system_message_must_be_first(json & messages) {
++    json system_message;
++    json reordered = json::array();
++
++    auto append_content = [](json & destination, const json & source) {
++        if (destination.is_string() && source.is_string()) {
++            destination = destination.get<std::string>() + "\n\n" + source.get<std::string>();
++            return;
++        }
++
++        json parts = json::array();
++        auto append_parts = [&parts](const json & content) {
++            if (content.is_string()) {
++                parts.push_back({
++                    { "type", "text"                       },
++                    { "text", content.get<std::string>() },
++                });
++            } else if (content.is_array()) {
++                parts.insert(parts.end(), content.begin(), content.end());
++            }
++        };
++        append_parts(destination);
++        append_parts(source);
++        destination = std::move(parts);
++    };
++
++    for (auto & message : messages) {
++        if (message.value("role", "") != "system") {
++            reordered.push_back(std::move(message));
++            continue;
++        }
++
++        if (system_message.is_null()) {
++            system_message = std::move(message);
++        } else {
++            append_content(system_message["content"], message.at("content"));
++        }
++    }
++
++    if (!system_message.is_null()) {
++        reordered.insert(reordered.begin(), std::move(system_message));
++    }
++    messages = std::move(reordered);
++}
++
+ 
+ // if first message is system and template does not support it, merge it with next message
+ static void system_message_not_supported(json & messages) {
+@@ -3650,6 +3698,10 @@ static common_chat_params common_chat_templates_apply_jinja(const struct common_
+         workaround::map_developer_role_to_system(params.messages);
+     }
+ 
++    if (src.find("System message must be at the beginning.") != std::string::npos) {
++        workaround::system_message_must_be_first(params.messages);
++    }
++
+     if (!tmpl.original_caps().supports_system_role) {
+         workaround::system_message_not_supported(params.messages);
+     }
+diff --git a/tests/test-chat.cpp b/tests/test-chat.cpp
+--- a/tests/test-chat.cpp
++++ b/tests/test-chat.cpp
+@@ -6853,6 +6853,35 @@ static void test_developer_role_to_system_workaround() {
+         }
+         LOG_ERR("Test 1 passed: developer role changed to system\n");
+     }
++
++    // Qwen3.5 requires all system/developer guidance to be at the beginning.
++    // This ordering occurs when Codex replays a compacted Responses session.
++    {
++        auto qwen_tmpls = read_templates("models/templates/Qwen3.5-4B.jinja");
++
++        common_chat_msg first_user;
++        first_user.role = "user";
++        first_user.content = "First user message";
++
++        common_chat_msg later_developer;
++        later_developer.role = "developer";
++        later_developer.content = "Later developer instruction";
++
++        common_chat_msg final_user;
++        final_user.role = "user";
++        final_user.content = "Final user message";
++
++        common_chat_templates_inputs inputs;
++        inputs.messages = { first_user, later_developer, final_user };
++
++        auto params = common_chat_templates_apply(qwen_tmpls.get(), inputs);
++        assert_contains(params.prompt, "Later developer instruction");
++        assert_contains(params.prompt, "First user message");
++        assert_contains(params.prompt, "Final user message");
++        if (params.prompt.find("Later developer instruction") > params.prompt.find("First user message")) {
++            throw std::runtime_error("Test failed: developer instruction was not moved before user messages");
++        }
++    }
+ }
+ 
+ // Verify reasoning-trace retention rules in the DeepSeek-V4 template:

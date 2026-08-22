@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Toggle llama.cpp
+Comment=Start or stop the llama.cpp model server
+Exec=/home/keng/Documents/sys-setup/llama.cpp/llama-toggle.sh
+Icon=system-run
+Terminal=false
+Categories=Utility;

@@ -51,6 +51,7 @@ COPY --from=source /src/llama.cpp/ ./
 COPY scripts/ /scripts/
 COPY patches/ /patches/
 RUN git apply /patches/llama-sampling-env.patch
+RUN git apply /patches/llama-responses-system-order.patch
 
 FROM build-base AS build
 
