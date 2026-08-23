@@ -1,57 +1,50 @@
-# llama.cpp benchmark summary
+# Non-MTP vs MTP benchmark
 
-- Timestamp (UTC): `2026-05-17T01:26:09Z`
+- Timestamp (UTC): `2026-08-22T08:46:41Z`
 - Host: `x86_64`
 - CPU threads: `32`
-- GPU: `NVIDIA GeForce RTX 4070 Ti SUPER, 16376 MiB, 595.71.05`
-- Baseline VRAM (used/peak): `13077` / `13087` MiB
-- Candidate VRAM (used/peak): `13077` / `13087` MiB
-- Model: `/models/hf-home/hub/models--unsloth--Qwen3.6-35B-A3B-GGUF/snapshots/a483e9e6cbd595906af30beda3187c2663a1118c/Qwen3.6-35B-A3B-UD-Q6_K_XL.gguf`
-- Baseline image: `ghcr.io/ggml-org/llama.cpp@sha256:111681c55c83007572032ba96134f81b809b71a0a652cd70595298c6976d0276`
-- Baseline image revision: `not labeled`
-- Candidate image: `llama-server:latest`
-- Candidate image revision: `b64739ea393b3c9d07cc9907e0a611f707838051`
+- GPU: `NVIDIA GeForce RTX 4070 Ti SUPER, 16376 MiB, 610.57.04`
+- Model: `/models/hf-home/hub/models--unsloth--Qwen3.8-27B-GGUF/snapshots/4ca720788d1e01f1bff70c033e0d0028fd02e502/Qwen3.8-27B-UD-Q2_K_XL.gguf`
+- Image: `llama-server:latest`
+- Image revision: `d775b8967a46d8beb110d444aa3b8938179e0dd8`
 
-## Benchmark setup
+## Configuration
 
-- Tool: `mtp-bench.py` (HTTP /completion)
-- Number of prompts: `9`
+- Both arms use the same image, model, prompts, and runtime settings.
+- Non-MTP removes every `LLAMA_ARG_SPEC_*` environment variable.
+- MTP settings: `LLAMA_ARG_SPEC_DRAFT_BACKEND_SAMPLING=on`, `LLAMA_ARG_SPEC_DRAFT_CACHE_TYPE_K=q4_0`, `LLAMA_ARG_SPEC_DRAFT_CACHE_TYPE_V=q4_0`, `LLAMA_ARG_SPEC_TYPE=draft-mtp`
+- Repetitions per prompt: `3`
 - Predict tokens per request: `192`
-- Temperature: `0.0`
-- GPU layers: `999`
-- Parallel slots: `1`
-- Flash attention: `on`
-- Context size: `131072`
-- KV cache types: `q8_0 / q8_0`
-- CPU MoE threads: `28`
-- mmap: `off`
+- Temperature: `0.0`; seed: `42`; prompt cache: disabled.
 
-## Aggregate
+## Aggregate comparison
 
-| Metric | Baseline | Candidate | Delta |
+| Metric | Non-MTP | MTP | Delta |
 | --- | ---: | ---: | ---: |
-| Total predicted tokens | 1,419 | 1,419 | +0 |
-| Total wall time (s) | 24.54 | 24.46 | -0.33% |
-| Aggregate throughput | 57.82 tok/s | 58.01 tok/s | +0.33% |
+| End-to-end throughput | 49.75 tok/s | 80.07 tok/s | +60.95% |
+| Server decode throughput | 52.12 tok/s | 86.86 tok/s | +66.67% |
+| Total wall time | 95.70 s | 59.46 s | -37.87% |
+| Idle process VRAM | 13,924 MiB | 15,396 MiB | +1,472 MiB |
+| Peak process VRAM | 14,050 MiB | 15,532 MiB | +1,482 MiB |
+| MTP draft acceptance | n/a | 0.648 | n/a |
 
-## Per-prompt results
+## Per-prompt server throughput
 
-| Prompt | Baseline tok/s | Candidate tok/s | Delta |
-| --- | ---: | ---: | ---: |
-| `code_python` | 64.60 tok/s | 64.86 tok/s | +0.40% |
-| `code_cpp` | 64.73 tok/s | 65.07 tok/s | +0.52% |
-| `explain_concept` | 64.95 tok/s | 65.13 tok/s | +0.28% |
-| `summarize` | 64.98 tok/s | 65.47 tok/s | +0.75% |
-| `qa_factual` | 65.22 tok/s | 65.39 tok/s | +0.26% |
-| `translation` | 66.42 tok/s | 67.28 tok/s | +1.30% |
-| `creative_short` | 65.02 tok/s | 65.15 tok/s | +0.21% |
-| `stepwise_math` | 64.95 tok/s | 64.91 tok/s | -0.06% |
-| `long_code_review` | 64.51 tok/s | 64.67 tok/s | +0.25% |
+| Prompt | Non-MTP | MTP | Delta | MTP accept rate |
+| --- | ---: | ---: | ---: | ---: |
+| `code_python` | 52.19 tok/s | 89.65 tok/s | +71.78% | 0.681 |
+| `code_cpp` | 51.88 tok/s | 97.98 tok/s | +88.87% | 0.776 |
+| `explain_concept` | 51.93 tok/s | 75.33 tok/s | +45.07% | 0.519 |
+| `summarize` | 51.83 tok/s | 86.47 tok/s | +66.86% | 0.647 |
+| `qa_factual` | 51.92 tok/s | 91.13 tok/s | +75.51% | 0.705 |
+| `translation` | 51.86 tok/s | 91.43 tok/s | +76.30% | 0.703 |
+| `creative_short` | 51.76 tok/s | 76.08 tok/s | +46.98% | 0.529 |
+| `stepwise_math` | 51.73 tok/s | 102.77 tok/s | +98.67% | 0.840 |
+| `long_code_review` | 51.29 tok/s | 75.71 tok/s | +47.60% | 0.534 |
 
 ## Notes
 
-- This benchmark measures real HTTP `/completion` latency including network round-trip within the host.
-- The benchmark reuses the repo env file as the single source of truth for `LLAMA_ARG_*` runtime settings.
-- The candidate image is compared against the official llama.cpp image as the baseline.
-- `n_predict=192`, `temperature=0.0`, `seed=42`, `cache_prompt=false` across all requests.
-- Raw artifacts: `results/baseline.json`, `results/candidate.json`, and both `docker inspect` outputs.
+- End-to-end throughput includes local HTTP round-trip time; server decode throughput uses llama.cpp timing data.
+- VRAM is sampled from the llama-server process during model load and inference, not from total GPU usage.
+- The two arms run sequentially: non-MTP first, then MTP.
+- Raw artifacts are under `benchmark/results/`.

@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-import argparse, json, sys, time
+import argparse
+import json
+import statistics
+import time
 from urllib import request
 
 PROMPTS = [
@@ -54,15 +57,41 @@ def post(url, payload):
         return json.loads(r.read())
 
 def run(args):
-    out = {"results": []}
+    out = {"config": {"n_predict": args.n_predict, "repetitions": args.repetitions}, "results": []}
     for p in PROMPTS:
-        t0 = time.time()
-        r = post(f"{args.url}/completion", {"prompt": p["prompt"], "n_predict": 192, "temperature": 0.0, "seed": 42, "cache_prompt": False, "stream": False})
-        wall = time.time() - t0
-        t = r.get("timings", {}) or {}
-        rec = {"name": p["name"], "wall_s": round(wall,3),
-               "predicted_n": t.get("predicted_n"), "predicted_per_second": t.get("predicted_per_second"),
-               "draft_n": t.get("draft_n",0), "draft_n_accepted": t.get("draft_n_accepted",0)}
+        runs = []
+        for _ in range(args.repetitions):
+            t0 = time.perf_counter()
+            response = post(f"{args.url}/completion", {
+                "prompt": p["prompt"],
+                "n_predict": args.n_predict,
+                "temperature": 0.0,
+                "seed": 42,
+                "cache_prompt": False,
+                "stream": False,
+            })
+            wall = time.perf_counter() - t0
+            timings = response.get("timings", {}) or {}
+            runs.append({
+                "wall_s": wall,
+                "predicted_n": timings.get("predicted_n") or 0,
+                "predicted_ms": timings.get("predicted_ms") or 0,
+                "predicted_per_second": timings.get("predicted_per_second") or 0,
+                "draft_n": timings.get("draft_n") or 0,
+                "draft_n_accepted": timings.get("draft_n_accepted") or 0,
+            })
+
+        draft_n = sum(run["draft_n"] for run in runs)
+        draft_n_accepted = sum(run["draft_n_accepted"] for run in runs)
+        rec = {
+            "name": p["name"],
+            "wall_s": round(sum(run["wall_s"] for run in runs), 3),
+            "predicted_n": sum(run["predicted_n"] for run in runs),
+            "predicted_ms": round(sum(run["predicted_ms"] for run in runs), 3),
+            "predicted_per_second": round(statistics.mean(run["predicted_per_second"] for run in runs), 3),
+            "draft_n": draft_n,
+            "draft_n_accepted": draft_n_accepted,
+        }
         rec["accept_rate"] = round(rec["draft_n_accepted"]/rec["draft_n"],4) if rec["draft_n"] else None
         out["results"].append(rec)
         ar = f"{rec['accept_rate']:.3f}" if rec["accept_rate"] is not None else "n/a"
@@ -70,9 +99,12 @@ def run(args):
     td  = sum(x["draft_n"] or 0 for x in out["results"])
     ta  = sum(x["draft_n_accepted"] or 0 for x in out["results"])
     tp  = sum(x["predicted_n"] or 0 for x in out["results"])
+    tm  = sum(x["predicted_ms"] or 0 for x in out["results"])
     tw  = sum(x["wall_s"] for x in out["results"])
-    out["aggregate"] = {"n_requests": len(out["results"]), "total_predicted": tp, "total_draft": td, "total_draft_accepted": ta,
-                        "aggregate_accept_rate": round(ta/td,4) if td else None, "wall_s_total": round(tw,2)}
+    out["aggregate"] = {"n_requests": len(out["results"]) * args.repetitions, "total_predicted": tp,
+                        "total_draft": td, "total_draft_accepted": ta,
+                        "aggregate_accept_rate": round(ta/td,4) if td else None, "wall_s_total": round(tw,2),
+                        "server_decode_tps": round(tp / (tm / 1000), 3) if tm else 0}
     print("\nAggregate:", json.dumps(out["aggregate"], indent=2))
     if args.out:
         json.dump(out, open(args.out,"w"), indent=2); print("Wrote", args.out)
@@ -97,6 +129,8 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--url", default="http://127.0.0.1:8080")
 ap.add_argument("--out")
 ap.add_argument("--diff", nargs=2)
+ap.add_argument("--repetitions", type=int, default=3)
+ap.add_argument("--n-predict", type=int, default=192)
 a = ap.parse_args()
 if a.diff: diff(*a.diff)
 else: run(a)

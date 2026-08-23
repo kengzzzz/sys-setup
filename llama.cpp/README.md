@@ -17,11 +17,14 @@
 
 - `docker compose up -d`
 - connect to the service over the Tailscale node name `llama-server:${LLAMA_ARG_PORT}`
+- launch `llama-cpp-toggle.desktop` from rofi to start or switch between MTP and non-MTP, or to stop the server
+- the launcher can also be called directly with `llama-toggle.sh mtp`, `llama-toggle.sh non-mtp`, or `llama-toggle.sh stop`
 
 # Run Benchmark
 
 - `benchmark/run-bench.sh`
-- the benchmark reads the same env file as runtime config, derives the local GGUF from `LLAMA_ARG_HF_REPO`, and compares `BENCHMARK_CANDIDATE_IMAGE` against `BENCHMARK_BASELINE_IMAGE`
+- the benchmark reads the same env file as runtime config, derives the local GGUF from `LLAMA_ARG_HF_REPO`, and compares the current image with all `LLAMA_ARG_SPEC_*` settings disabled versus enabled
+- throughput and llama-server process VRAM are written to `benchmark/summary.md`; raw measurements are under `benchmark/results/`
 
 # Notes
 
@@ -29,6 +32,6 @@
 - downloaded models are cached under `./models/hf-home`
 - the first run will download the model into the shared Hugging Face cache
 - runtime arguments live in `./.env` and use `LLAMA_ARG_*`; this image patches llama.cpp to expose the configured sampling parameters through env as well
-- benchmark image refs also live in `./.env`, so runtime and benchmark configuration stay in one place
+- the benchmark image and run settings live in `./.env`, so runtime and benchmark configuration stay in one place
 - `llama-server` no longer publishes a host port; it is only reachable through the Tailscale sidecar network namespace
 - the Tailscale sidecar sets `TS_ACCEPT_DNS=false`, so containers keep Docker's default DNS instead of adopting tailnet DNS settings
