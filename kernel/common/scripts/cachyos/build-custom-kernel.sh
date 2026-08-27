@@ -7,11 +7,10 @@ cd "/build/linux-cachyos/${KERNEL_SOURCE_SUBDIR:?set KERNEL_SOURCE_SUBDIR}"
 chown -R builder:builder /out /build
 
 su builder -c "
+  set -euo pipefail
   updpkgsums
   makepkg -o --skippgpcheck
-  mv ${KERNEL_CONFIG_GLOB:?set KERNEL_CONFIG_GLOB} config
-  patch config < /patches/config.patch
-  updpkgsums
+  patch --fuzz=0 src/cachyos-*/.config < /patches/config.patch
   makepkg -e -s --noconfirm --skippgpcheck
   cp -v *.pkg.tar.zst /out/
 "

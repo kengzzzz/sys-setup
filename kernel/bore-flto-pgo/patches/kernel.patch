@@ -63,7 +63,7 @@
 +_pkgsuffix=bore-flto-pgo
  
  pkgbase="linux-$_pkgsuffix"
- _major=7.0
+ _major=7.2
 @@ -182,7 +176,7 @@
  _tagrel=1
  pkgrel=1
