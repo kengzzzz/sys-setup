@@ -1,7 +1,7 @@
 x-llama-build-args: &llama-build-args
   BASE_CUDA_DEV_CONTAINER: nvidia/cuda@sha256:b9f64abf7226fdb3463ca202bc99878ec847171e6c5f77bd34c8d1403fbf1eca # nvidia/cuda version: 13.1.2-devel-ubuntu24.04
   LLAMA_CPP_REPO: https://github.com/ggml-org/llama.cpp.git
-  LLAMA_CPP_COMMIT: d775b8967a46d8beb110d444aa3b8938179e0dd8
+  LLAMA_CPP_COMMIT: c1d0e7a004015f23bc0233470b747b596f29b264
   CUDA_ARCH: 89-real
   CUDA_COMPRESSION_MODE: speed
   GGML_CUDA_FA: "ON"

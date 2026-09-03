@@ -1,7 +1,7 @@
 diff --git a/common/chat.cpp b/common/chat.cpp
 --- a/common/chat.cpp
 +++ b/common/chat.cpp
-@@ -2962,6 +2962,54 @@ static void map_developer_role_to_system(json & messages) {
+@@ -2962,6 +2962,58 @@ static void map_developer_role_to_system(json & messages) {
      }
  }
  
@@ -26,7 +26,7 @@ diff --git a/common/chat.cpp b/common/chat.cpp
 +                    { "text", content.get<std::string>() },
 +                });
 +            } else if (content.is_array()) {
-+                parts.insert(parts.end(), content.begin(), content.end());
++                parts.insert(content);
 +            }
 +        };
 +        append_parts(destination);
@@ -48,15 +48,19 @@ diff --git a/common/chat.cpp b/common/chat.cpp
 +    }
 +
 +    if (!system_message.is_null()) {
-+        reordered.insert(reordered.begin(), std::move(system_message));
++        json with_system = json::array();
++        with_system.push_back(std::move(system_message));
++        with_system.insert(reordered);
++        messages = std::move(with_system);
++    } else {
++        messages = std::move(reordered);
 +    }
-+    messages = std::move(reordered);
 +}
 +
  
  // if first message is system and template does not support it, merge it with next message
  static void system_message_not_supported(json & messages) {
-@@ -3650,6 +3698,10 @@ static common_chat_params common_chat_templates_apply_jinja(const struct common_
+@@ -3650,6 +3702,10 @@ static common_chat_params common_chat_templates_apply_jinja(const struct common_
          workaround::map_developer_role_to_system(params.messages);
      }
  
