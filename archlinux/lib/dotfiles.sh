@@ -116,17 +116,16 @@ install_dotfiles_system_files() {
         update-ca-trust
     fi
 
-    mkdir -p /usr/share/backgrounds /usr/share/wayland-sessions /usr/local/bin
+    mkdir -p /etc/tuigreet /usr/share/wayland-sessions /usr/local/bin
     cp -r "$dot_dir/etc/greetd/." /etc/greetd/ 2>/dev/null || true
-    cp -r "$dot_dir/etc/usr/share/backgrounds/." /usr/share/backgrounds/ 2>/dev/null || true
+    cp -r "$dot_dir/etc/tuigreet/." /etc/tuigreet/ 2>/dev/null || true
     cp -r "$dot_dir/usr/share/wayland-sessions/." /usr/share/wayland-sessions/ 2>/dev/null || true
 
     if [[ -f $dot_dir/usr/bin/hyprland-quiet ]]; then
         install -m 755 "$dot_dir/usr/bin/hyprland-quiet" /usr/local/bin/hyprland-quiet
     fi
 
-    chmod 644 /etc/greetd/regreet.toml 2>/dev/null || true
-    chmod 644 /usr/share/backgrounds/wallpaper.jpg 2>/dev/null || true
+    chmod 644 /etc/greetd/config.toml /etc/tuigreet/config.toml 2>/dev/null || true
     chmod 644 /usr/share/wayland-sessions/*.desktop 2>/dev/null || true
 }
 

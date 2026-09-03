@@ -21,7 +21,7 @@ BASE_PACKAGES=(
 
 OFFICIAL_PACKAGES=(
     gnu-free-fonts noto-fonts noto-fonts-cjk noto-fonts-emoji noto-fonts-extra
-    greetd greetd-regreet cage hyprland swaybg swaylock swayidle swayimg mate-polkit
+    greetd greetd-tuigreet hyprland swaybg swaylock swayidle swayimg mate-polkit
     waybar swaync xdg-desktop-portal-hyprland xdg-desktop-portal-gtk
     qt5ct qt6ct papirus-icon-theme thunar gvfs tumbler kitty cliphist grim slurp swappy hyprpicker
     pipewire pipewire-pulse wireplumber pavucontrol blueman helium-browser-bin mpv playerctl qalculate-gtk
