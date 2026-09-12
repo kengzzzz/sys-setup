@@ -56,20 +56,22 @@ Useful flags:
 `provision.sh` (inside Debian, as root):
 
 1. Installs `zsh git stow build-essential curl ca-certificates locales socat sudo
-   gnupg` and generates the `en_US.UTF-8` locale.
+   gnupg fzf command-not-found` and generates the `en_US.UTF-8` locale.
 2. `loginctl enable-linger` so the user systemd manager (and the agent bridge)
    run without an interactive login.
-3. Installs oh-my-zsh and the three plugins the dotfiles load
-   (`zsh-autosuggestions`, `zsh-syntax-highlighting`, `fast-syntax-highlighting`).
-   The theme is `robbyrussell` (built into oh-my-zsh — no theme install needed).
+3. Installs oh-my-zsh and the two external plugins the dotfiles load
+   (`zsh-autosuggestions` and `zsh-syntax-highlighting`). The theme is `sorin`
+   (built into oh-my-zsh — no theme install needed); `fzf` and
+   `command-not-found` are backed by their Debian packages.
 4. Installs the CLI tools the dotfiles' aliases assume: `eza` (`ls`/`ll`/`lt`),
    `fastfetch` (`ff`, plus the shell banner), and `nano` (`$EDITOR`). On Debian
    releases without these in apt, it falls back to the upstream eza repo and the
    fastfetch `.deb`.
 5. Brings up the forwarded ssh-agent bridge (`socat` + `npiperelay.exe` →
    `~/.ssh/agent.sock`) and verifies `ssh -T git@github.com`.
-6. Clones `kengzzzz/dotfiles` and links it with `stow` (skipping the Arch/system
-   dirs `utils`, `etc`, `usr`).
+6. Clones `kengzzzz/dotfiles` and links only the shell-focused `btop`, `codex`,
+   `fastfetch`, `muse`, `ssh`, and `zshrc` Stow packages. Desktop, Arch-only,
+   system, and documentation packages are not deployed into WSL.
 7. Writes `~/.zshrc_custom` (sourced last by the dotfiles' `.zshrc`) to point
    `SSH_AUTH_SOCK` at the bridge socket — the dotfiles' `00-init` otherwise sets
    the Arch desktop path `$XDG_RUNTIME_DIR/ssh-agent.socket`.
@@ -91,8 +93,8 @@ Useful flags:
 - **Vanilla kernel.** Stock Microsoft WSL2 kernel; no `.wslconfig` tuning and no
   custom kernel (see `../kernel/deprecated/wsl2/` for the experimental kernel
   build).
-- **Shell only.** Dev toolchains (nvm/node, bun, go, rust, docker) are not
-  installed; the matching `PATH` lines in the dotfiles' `.zshrc` simply no-op when
-  those tools are absent.
+- **Shell only.** Dev toolchains (Node, Bun, Go, Rust, Docker) are not installed.
+  The shared shell configuration only prepends `~/.local/bin` and
+  `~/.cargo/bin`; absent directories are harmless.
 - **Other machines.** `--win-user` is auto-detected from `/mnt/c/Users`; pass it
   (and `-NpiperelayPath`) explicitly on a host where the Windows username differs.

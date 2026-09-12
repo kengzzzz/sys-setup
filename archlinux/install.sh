@@ -11,6 +11,8 @@ source "$SCRIPT_DIR/lib/config.sh"
 source "$SCRIPT_DIR/lib/disk.sh"
 # shellcheck source=lib/packages.sh
 source "$SCRIPT_DIR/lib/packages.sh"
+# shellcheck source=lib/boot.sh
+source "$SCRIPT_DIR/lib/boot.sh"
 
 DRY_RUN=0
 CONFIG_FILE=
@@ -25,6 +27,9 @@ Options:
   --kernel-packages-dir DIR
                     Install existing custom kernel packages from DIR.
   --no-dotfiles     Install the OS but skip private dotfiles setup.
+  --no-workloads    Skip GPU-container and ARM64-container host packages.
+  --restore-lact-config
+                    Restore the GPU-specific LACT snapshot after a hardware check.
   -h, --help        Show this help.
 EOF
 }
@@ -48,6 +53,12 @@ parse_args() {
                 ;;
             --no-dotfiles)
                 ENABLE_DOTFILES=0
+                ;;
+            --no-workloads)
+                ENABLE_WORKLOAD_PACKAGES=0
+                ;;
+            --restore-lact-config)
+                RESTORE_LACT_CONFIG=1
                 ;;
             -h | --help)
                 usage

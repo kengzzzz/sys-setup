@@ -262,7 +262,7 @@ Invoke-Provision
 
 Write-Step 'Done'
 Write-Note "Open your distro:  wsl -d $InstanceName"
-Write-Note 'zsh (robbyrussell prompt) should load. If dotfiles were skipped, plug in the YubiKey,'
+Write-Note 'zsh (sorin prompt) should load. If dotfiles were skipped, plug in the YubiKey,'
 Write-Note "run 'ssh-add -K' in PowerShell, then re-run this script."
 if ($IsTestInstance) {
     Write-Note "Test instance - remove it when done:  wsl --unregister $InstanceName"

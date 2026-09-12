@@ -12,7 +12,6 @@ set_default_config() {
     ROOT_FS=${ROOT_FS:-xfs}
     PRIMARY_KERNEL=${PRIMARY_KERNEL:-linux-bore-flto-pgo}
     FALLBACK_KERNEL=${FALLBACK_KERNEL:-linux-cachyos-lts}
-    FALLBACK_KERNEL_HEADERS=${FALLBACK_KERNEL_HEADERS:-linux-cachyos-lts-headers}
     FALLBACK_NVIDIA_PACKAGE=${FALLBACK_NVIDIA_PACKAGE:-linux-cachyos-lts-nvidia-open}
     CUSTOM_KERNEL_BUILD=${CUSTOM_KERNEL_BUILD:-1}
     CUSTOM_KERNEL_DIR=${CUSTOM_KERNEL_DIR:-kernel/bore-flto-pgo}
@@ -25,8 +24,10 @@ set_default_config() {
     DOTFILES_REPO=${DOTFILES_REPO:-git@github.com:kengzzzz/dotfiles.git}
     DOTFILES_BRANCH=${DOTFILES_BRANCH:-main}
     DOTFILES_DIR=${DOTFILES_DIR:-/home/${INSTALL_USER}/dotfiles}
-    BOOT_ENTRY=${BOOT_ENTRY:-arch.conf}
+    BOOT_ENTRY=${BOOT_ENTRY:-default.conf}
     ENABLE_DOTFILES=${ENABLE_DOTFILES:-1}
+    ENABLE_WORKLOAD_PACKAGES=${ENABLE_WORKLOAD_PACKAGES:-1}
+    RESTORE_LACT_CONFIG=${RESTORE_LACT_CONFIG:-0}
     RETRY_ATTEMPTS=${RETRY_ATTEMPTS:-3}
     RETRY_DELAY=${RETRY_DELAY:-5}
 }
@@ -52,8 +53,8 @@ prompt_install_config() {
     prompt_default ROOT_FS "Root filesystem" "$ROOT_FS"
     prompt_default PRIMARY_KERNEL "Primary kernel" "$PRIMARY_KERNEL"
     prompt_default FALLBACK_KERNEL "Fallback kernel" "$FALLBACK_KERNEL"
-    prompt_default FALLBACK_KERNEL_HEADERS "Fallback kernel headers" "$FALLBACK_KERNEL_HEADERS"
     prompt_default FALLBACK_NVIDIA_PACKAGE "Fallback Nvidia package" "$FALLBACK_NVIDIA_PACKAGE"
+    prompt_default BOOT_ENTRY "Primary boot entry filename" "$BOOT_ENTRY"
     prompt_default NETWORK_INTERFACE "Network interface" "$NETWORK_INTERFACE"
     prompt_default NETWORK_ADDRESS "Static address" "$NETWORK_ADDRESS"
     prompt_default NETWORK_GATEWAY "Gateway" "$NETWORK_GATEWAY"
@@ -73,7 +74,12 @@ validate_config() {
     [[ $ROOT_FS == xfs ]] || die "only xfs root filesystem is currently implemented"
     [[ -d /sys/firmware/efi ]] || die "UEFI firmware is required for systemd-boot"
     [[ -n $PRIMARY_KERNEL && -n $FALLBACK_KERNEL ]] || die "primary and fallback kernels are required"
+    [[ $BOOT_ENTRY =~ ^[A-Za-z0-9._+-]+\.conf$ ]] || die "boot entry must be a simple .conf filename: $BOOT_ENTRY"
+    [[ $BOOT_ENTRY != "${FALLBACK_KERNEL}.conf" ]] || die "primary and fallback boot entries must use different filenames"
     [[ -n $NETWORK_INTERFACE && -n $NETWORK_ADDRESS && -n $NETWORK_GATEWAY && -n $NETWORK_DNS ]] || die "static network values are required"
+    if secure_boot_enabled; then
+        die "Secure Boot must be disabled before installation; this installer does not enroll or sign Secure Boot keys"
+    fi
 }
 
 show_install_plan() {
@@ -88,9 +94,12 @@ show_install_plan() {
     printf 'Extra locales:     %s\n' "$EXTRA_LOCALES"
     printf 'Primary kernel:    %s\n' "$PRIMARY_KERNEL"
     printf 'Fallback kernel:   %s\n' "$FALLBACK_KERNEL"
+    printf 'Boot entry:        %s\n' "$BOOT_ENTRY"
     printf 'Network:           %s %s gw %s dns %s\n' "$NETWORK_INTERFACE" "$NETWORK_ADDRESS" "$NETWORK_GATEWAY" "$NETWORK_DNS"
     printf 'YubiKey auth:      %s\n' "$([[ ${YUBIKEY_SYSTEM_AUTH:-1} == 1 ]] && printf 'system-auth' || printf 'disabled')"
     printf 'Dotfiles:          %s\n' "$([[ ${ENABLE_DOTFILES:-1} == 1 ]] && printf '%s (%s)' "$DOTFILES_REPO" "$DOTFILES_BRANCH" || printf 'disabled')"
+    printf 'Repo workloads:    %s\n' "$([[ ${ENABLE_WORKLOAD_PACKAGES:-1} == 1 ]] && printf 'enabled' || printf 'disabled')"
+    printf 'Restore LACT:      %s\n' "$([[ ${RESTORE_LACT_CONFIG:-0} == 1 ]] && printf 'matching hardware only' || printf 'disabled')"
 }
 
 write_chroot_env() {
@@ -105,7 +114,6 @@ write_chroot_env() {
     write_kv "$env_file" KEYMAP "$KEYMAP"
     write_kv "$env_file" PRIMARY_KERNEL "$PRIMARY_KERNEL"
     write_kv "$env_file" FALLBACK_KERNEL "$FALLBACK_KERNEL"
-    write_kv "$env_file" FALLBACK_KERNEL_HEADERS "$FALLBACK_KERNEL_HEADERS"
     write_kv "$env_file" FALLBACK_NVIDIA_PACKAGE "$FALLBACK_NVIDIA_PACKAGE"
     write_kv "$env_file" NETWORK_INTERFACE "$NETWORK_INTERFACE"
     write_kv "$env_file" NETWORK_ADDRESS "$NETWORK_ADDRESS"
@@ -117,6 +125,8 @@ write_chroot_env() {
     write_kv "$env_file" DOTFILES_BRANCH "$DOTFILES_BRANCH"
     write_kv "$env_file" DOTFILES_DIR "$DOTFILES_DIR"
     write_kv "$env_file" ENABLE_DOTFILES "$ENABLE_DOTFILES"
+    write_kv "$env_file" ENABLE_WORKLOAD_PACKAGES "$ENABLE_WORKLOAD_PACKAGES"
+    write_kv "$env_file" RESTORE_LACT_CONFIG "$RESTORE_LACT_CONFIG"
     write_kv "$env_file" BOOT_ENTRY "$BOOT_ENTRY"
     write_kv "$env_file" RETRY_ATTEMPTS "$RETRY_ATTEMPTS"
     write_kv "$env_file" RETRY_DELAY "$RETRY_DELAY"

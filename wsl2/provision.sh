@@ -19,6 +19,31 @@ DOTFILES_BRANCH='main'
 ENABLE_DOTFILES=1
 export DRY_RUN=0
 
+WSL_STOW_PACKAGES=(
+    btop
+    codex
+    fastfetch
+    muse
+    ssh
+    zshrc
+)
+
+WSL_PACKAGES=(
+    zsh
+    git
+    stow
+    build-essential
+    curl
+    ca-certificates
+    locales
+    socat
+    sudo
+    gnupg
+    bubblewrap
+    fzf
+    command-not-found
+)
+
 # Populated by resolve_defaults.
 USER_HOME=''
 USER_UID=''
@@ -28,7 +53,7 @@ usage() {
     cat <<'EOF'
 Usage: provision.sh [options]
 
-Provisions a fresh WSL2 Debian: zsh + oh-my-zsh (the robbyrussell theme and the
+Provisions a fresh WSL2 Debian: zsh + oh-my-zsh (the sorin theme and the
 plugins the dotfiles expect) plus the CLI tools the dotfiles' aliases use, and
 (if the forwarded Windows ssh-agent can authenticate to GitHub) clones and stows
 the private dotfiles. Must run as root inside the distro.
@@ -123,8 +148,7 @@ install_packages() {
     section "Installing packages"
     export DEBIAN_FRONTEND=noninteractive
     retry apt-get update
-    retry apt-get install -y --no-install-recommends \
-        zsh git stow build-essential curl ca-certificates locales socat sudo gnupg bubblewrap
+    retry apt-get install -y --no-install-recommends "${WSL_PACKAGES[@]}"
 }
 
 configure_locale() {
@@ -141,8 +165,8 @@ enable_user_systemd() {
 }
 
 install_shell_framework() {
-    # The dotfiles set ZSH_THEME=robbyrussell (a built-in theme, no install
-    # needed) and load these three custom plugins; clone exactly those so the
+    # The dotfiles set ZSH_THEME=sorin (a built-in theme, no install needed)
+    # and load these two custom plugins; clone exactly those so the
     # prompt loads without "plugin not found" warnings.
     section "Installing Oh My Zsh and the zsh plugins the dotfiles expect"
     as_user '
@@ -156,8 +180,6 @@ install_shell_framework() {
             || git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions.git "$ZSH_CUSTOM/plugins/zsh-autosuggestions"
         [[ -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ]] \
             || git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting.git "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting"
-        [[ -d "$ZSH_CUSTOM/plugins/fast-syntax-highlighting" ]] \
-            || git clone --depth=1 https://github.com/zdharma-continuum/fast-syntax-highlighting.git "$ZSH_CUSTOM/plugins/fast-syntax-highlighting"
     '
 }
 
@@ -271,18 +293,16 @@ clone_dotfiles() {
 
 stow_dotfiles() {
     section "Linking dotfiles with stow"
+    local package_list
+    printf -v package_list '%q ' "${WSL_STOW_PACKAGES[@]}"
     as_user "
         set -euo pipefail
         cd '$DOTFILES_DIR'
         rm -f ~/.zshrc
-        for dir in */; do
-            dir=\${dir%/}
-            [[ -d \"\$dir\" ]] || continue
-            case \"\$dir\" in
-                utils|etc|usr) continue ;;
-            esac
-            stow -D \"\$dir\" 2>/dev/null || true
-            stow -v \"\$dir\"
+        for package in $package_list; do
+            [[ -d \"\$package\" ]] || { printf 'missing dotfiles package: %s\\n' \"\$package\" >&2; exit 1; }
+            stow -D \"\$package\" 2>/dev/null || true
+            stow -v \"\$package\"
         done
     "
 }
@@ -396,7 +416,9 @@ main() {
     set_default_shell
 
     section "Done"
-    log "Open the distro with 'wsl' — zsh (robbyrussell prompt) should load."
+    log "Open the distro with 'wsl' — zsh (sorin prompt) should load."
 }
 
-main "$@"
+if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
+    main "$@"
+fi

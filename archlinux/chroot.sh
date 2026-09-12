@@ -15,6 +15,8 @@ source "$SCRIPT_DIR/lib/network.sh"
 source "$SCRIPT_DIR/lib/auth.sh"
 # shellcheck source=lib/boot.sh
 source "$SCRIPT_DIR/lib/boot.sh"
+# shellcheck source=lib/services.sh
+source "$SCRIPT_DIR/lib/services.sh"
 # shellcheck source=install.env
 source "$SCRIPT_DIR/install.env"
 
@@ -53,11 +55,6 @@ configure_sudoers() {
     sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 }
 
-enable_services() {
-    section "Enabling services"
-    systemctl enable systemd-networkd systemd-resolved greetd pcscd bluetooth tailscaled docker.socket fstrim.timer xfs_scrub_all.timer accounts-daemon
-}
-
 create_user() {
     section "Creating user"
     if id "$INSTALL_USER" >/dev/null 2>&1; then
@@ -69,15 +66,10 @@ create_user() {
 
 install_bootloader() {
     section "Installing systemd-boot"
-    bootctl --no-variables install
+    bootctl install
     mkdir -p /boot/loader/entries
-    cat >/boot/loader/loader.conf <<EOF
-default ${PRIMARY_KERNEL}.conf
-timeout 3
-console-mode max
-editor no
-EOF
-    write_boot_entry "$PRIMARY_KERNEL" "$PRIMARY_KERNEL" "/boot/loader/entries/${PRIMARY_KERNEL}.conf"
+    render_loader_config "$BOOT_ENTRY" >/boot/loader/loader.conf
+    write_boot_entry "$PRIMARY_KERNEL" "$PRIMARY_KERNEL" "/boot/loader/entries/$BOOT_ENTRY"
     write_boot_entry "$FALLBACK_KERNEL" "$FALLBACK_KERNEL" "/boot/loader/entries/${FALLBACK_KERNEL}.conf"
 }
 
@@ -97,7 +89,7 @@ main() {
     install_official_packages
     install_custom_kernel_packages
     configure_sudoers
-    enable_services
+    enable_system_services
     create_user
     install_bootloader
     set_passwords

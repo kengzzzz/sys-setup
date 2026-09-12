@@ -7,23 +7,31 @@ render_static_network() {
     local dns=$4
 
     cat <<EOF
-[Match]
-Name=$interface
+[connection]
+id=static-$interface
+type=ethernet
+interface-name=$interface
+autoconnect=true
 
-[Network]
-Address=$address
-Gateway=$gateway
-DNS=$dns
-LinkLocalAddressing=ipv6
+[ipv4]
+method=manual
+address1=$address,$gateway
+dns=$dns;
 
-[Link]
-RequiredForOnline=yes
+[ipv6]
+method=link-local
 EOF
 }
 
 configure_static_network() {
-    section "Configuring systemd-networkd"
-    mkdir -p /etc/systemd/network
-    render_static_network "$NETWORK_INTERFACE" "$NETWORK_ADDRESS" "$NETWORK_GATEWAY" "$NETWORK_DNS" >/etc/systemd/network/20-static.network
-    ln -sfn /run/systemd/resolve/resolv.conf /etc/resolv.conf
+    local output=${1:-/etc/NetworkManager/system-connections/static-${NETWORK_INTERFACE}.nmconnection}
+    local resolv_conf=${2:-/etc/resolv.conf}
+    local rendered
+
+    section "Configuring NetworkManager"
+    rendered=$(mktemp)
+    render_static_network "$NETWORK_INTERFACE" "$NETWORK_ADDRESS" "$NETWORK_GATEWAY" "$NETWORK_DNS" >"$rendered"
+    install -Dm600 "$rendered" "$output"
+    rm -f "$rendered"
+    ln -sfn /run/systemd/resolve/resolv.conf "$resolv_conf"
 }

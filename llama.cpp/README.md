@@ -1,5 +1,9 @@
 # Build llama.cpp Images
 
+- install the NVIDIA driver plus `nvidia-container-toolkit` on the Docker host;
+  the Compose services request `gpus: all`
+- verify GPU containers before building with
+  `docker run --rm --gpus all nvidia/cuda:13.0.0-base-ubuntu24.04 nvidia-smi`
 - `docker compose build llama-server`
 
 # Configure Model
@@ -17,7 +21,8 @@
 
 - `docker compose up -d`
 - connect to the service over the Tailscale node name `llama-server:${LLAMA_ARG_PORT}`
-- launch `llama-cpp-toggle.desktop` from rofi to start or switch between MTP and non-MTP, or to stop the server
+- launch `llama-cpp-toggle.desktop` from the Quickshell application launcher to
+  start or switch between MTP and non-MTP, or to stop the server
 - the launcher can also be called directly with `llama-toggle.sh mtp`, `llama-toggle.sh non-mtp`, or `llama-toggle.sh stop`
 
 # Run Benchmark

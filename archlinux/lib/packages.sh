@@ -21,17 +21,24 @@ BASE_PACKAGES=(
 
 OFFICIAL_PACKAGES=(
     gnu-free-fonts noto-fonts noto-fonts-cjk noto-fonts-emoji noto-fonts-extra
-    greetd greetd-tuigreet hyprland swaybg swaylock swayidle swayimg mate-polkit
-    waybar swaync xdg-desktop-portal-hyprland xdg-desktop-portal-gtk
+    greetd greetd-tuigreet hyprland swaybg swaylock swayimg hypridle mate-polkit
+    quickshell uwsm xdg-desktop-portal-hyprland xdg-desktop-portal-gtk
     qt5ct qt6ct papirus-icon-theme thunar gvfs tumbler kitty cliphist grim slurp swappy hyprpicker
-    pipewire pipewire-pulse wireplumber pavucontrol blueman helium-browser-bin mpv playerctl qalculate-gtk
+    pipewire pipewire-pulse pipewire-jack wireplumber pavucontrol blueman brave-origin-bin mpv playerctl qalculate-gtk
     nvidia-utils lib32-nvidia-utils egl-gbm libva-nvidia-driver cpupower
     zsh zsh-completions zsh-syntax-highlighting imagemagick tesseract tesseract-data-eng tesseract-data-tha ffmpegthumbnailer
-    ttf-jetbrains-mono-nerd ttf-nerd-fonts-symbols-common ttf-ibm-plex
-    btop eza fastfetch freerdp jq bc cpio docker bubblewrap kolourpaint gpu-screen-recorder
-    pacman-contrib cachyos-settings python-pywal rofi sbctl sbsigntools socat steam stow tailscale docker-compose
+    ttf-jetbrains-mono-nerd ttf-nerd-fonts-symbols-common ttf-ibm-plex fzf pkgfile
+    btop eza fastfetch freerdp jq bc cpio ripgrep docker bubblewrap gpu-screen-recorder
+    pacman-contrib cachyos-settings socat steam stow tailscale docker-compose
     paru
-    docker-buildx accountsservice python-dbus vscodium nwg-look gpu-screen-recorder-ui vesktop pam-u2f
+    docker-buildx accountsservice python-dbus vscodium nwg-look gpu-screen-recorder-ui vesktop-bin pam-u2f
+    networkmanager lact fwupd yubikey-manager wlr-randr openai-codex zenity
+)
+
+WORKLOAD_PACKAGES=(
+    nvidia-container-toolkit
+    qemu-user-static
+    qemu-user-static-binfmt
 )
 
 setup_cachyos_repo() {
@@ -55,7 +62,7 @@ sync_pacman() {
 pacstrap_base() {
     section "Installing base system"
     retry pacstrap -K /mnt --cachedir /mnt/var/cache/pacman/pkg --noconfirm \
-        "${BASE_PACKAGES[@]}" "$FALLBACK_KERNEL" "$FALLBACK_KERNEL_HEADERS" "$FALLBACK_NVIDIA_PACKAGE"
+        "${BASE_PACKAGES[@]}" "$FALLBACK_KERNEL" "$FALLBACK_NVIDIA_PACKAGE"
 }
 
 generate_fstab() {
@@ -65,7 +72,11 @@ generate_fstab() {
 
 install_official_packages() {
     section "Installing official packages"
-    retry pacman -S --noconfirm --needed "${OFFICIAL_PACKAGES[@]}"
+    local packages=("${OFFICIAL_PACKAGES[@]}")
+    if [[ ${ENABLE_WORKLOAD_PACKAGES:-1} == 1 ]]; then
+        packages+=("${WORKLOAD_PACKAGES[@]}")
+    fi
+    retry pacman -S --noconfirm --needed "${packages[@]}"
 }
 
 build_custom_kernel_packages() {
@@ -90,14 +101,15 @@ validate_custom_kernel_packages() {
     [[ -n ${CUSTOM_KERNEL_PACKAGES_DIR:-} ]] || die "custom kernel packages directory is required"
     [[ -d $CUSTOM_KERNEL_PACKAGES_DIR ]] || die "custom kernel packages directory not found: $CUSTOM_KERNEL_PACKAGES_DIR"
 
+    local kernel_packages nvidia_packages
     shopt -s nullglob
-    CUSTOM_KERNEL_PACKAGES=(
-        "$CUSTOM_KERNEL_PACKAGES_DIR"/"${PRIMARY_KERNEL}"-[0-9]*.pkg.tar.zst
-        "$CUSTOM_KERNEL_PACKAGES_DIR"/"${PRIMARY_KERNEL}"-nvidia-open-[0-9]*.pkg.tar.zst
-    )
+    kernel_packages=("$CUSTOM_KERNEL_PACKAGES_DIR"/"${PRIMARY_KERNEL}"-[0-9]*.pkg.tar.zst)
+    nvidia_packages=("$CUSTOM_KERNEL_PACKAGES_DIR"/"${PRIMARY_KERNEL}"-nvidia-open-[0-9]*.pkg.tar.zst)
     shopt -u nullglob
 
-    ((${#CUSTOM_KERNEL_PACKAGES[@]} > 0)) || die "no custom kernel packages found in $CUSTOM_KERNEL_PACKAGES_DIR"
+    ((${#kernel_packages[@]} > 0)) || die "custom kernel package not found in $CUSTOM_KERNEL_PACKAGES_DIR"
+    ((${#nvidia_packages[@]} > 0)) || die "custom kernel NVIDIA package not found in $CUSTOM_KERNEL_PACKAGES_DIR"
+    CUSTOM_KERNEL_PACKAGES=("${kernel_packages[@]}" "${nvidia_packages[@]}")
 }
 
 copy_custom_kernel_packages_to_target() {

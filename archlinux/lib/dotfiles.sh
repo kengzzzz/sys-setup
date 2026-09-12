@@ -1,5 +1,34 @@
 #!/usr/bin/env bash
 
+ARCH_STOW_PACKAGES=(
+    Thunar
+    applications
+    autostart
+    btop
+    codex
+    desktop
+    fastfetch
+    fontconfig
+    gpu-screen-recorder
+    gtk-3.0
+    gtk-4.0
+    hypr
+    icons
+    kitty
+    muse
+    nwg-look
+    pipewire
+    qt6ct
+    quickshell
+    ssh
+    swaylock
+    uwsm
+    vesktop
+    zshrc
+)
+
+DEFAULT_BROWSER_DESKTOP=brave-origin.desktop
+
 configure_makepkg() {
     section "Configuring makepkg.conf"
     sed -i 's/ debug / !debug /g' /etc/makepkg.conf
@@ -69,35 +98,33 @@ install_zsh_plugins() {
         mkdir -p "$ZSH_CUSTOM/plugins"
         git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions.git "$ZSH_CUSTOM/plugins/zsh-autosuggestions" 2>/dev/null || true
         git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting.git "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" 2>/dev/null || true
-        git clone --depth=1 https://github.com/zdharma-continuum/fast-syntax-highlighting.git "$ZSH_CUSTOM/plugins/fast-syntax-highlighting" 2>/dev/null || true
     '
 }
 
 stow_dotfiles() {
     section "Linking dotfiles"
+    local package_list
+    printf -v package_list '%q ' "${ARCH_STOW_PACKAGES[@]}"
     runuser -u "$INSTALL_USER" -- bash -lc "
         set -euo pipefail
         cd '$DOTFILES_DIR'
         rm -f ~/.zshrc
         # keep stow folding at icons/default so app-installed icon dirs stay out of the repo
         mkdir -p ~/.local/share/icons
-        for dir in *; do
-            [[ -d \"\$dir\" ]] || continue
-            case \"\$dir\" in
-                utils|etc|usr) continue ;;
-            esac
-            stow -D \"\$dir\" 2>/dev/null || true
-            stow -v \"\$dir\"
+        for package in $package_list; do
+            [[ -d \"\$package\" ]] || { printf 'missing dotfiles package: %s\\n' \"\$package\" >&2; exit 1; }
+            stow -D \"\$package\" 2>/dev/null || true
+            stow -v \"\$package\"
         done
     "
 }
 
 configure_default_browser() {
     section "Configuring default browser"
-    runuser -u "$INSTALL_USER" -- bash -lc '
+    runuser -u "$INSTALL_USER" -- env DEFAULT_BROWSER_DESKTOP="$DEFAULT_BROWSER_DESKTOP" bash -lc '
         set -euo pipefail
-        xdg-settings set default-web-browser helium.desktop || true
-        xdg-mime default helium.desktop \
+        xdg-settings set default-web-browser "$DEFAULT_BROWSER_DESKTOP" || true
+        xdg-mime default "$DEFAULT_BROWSER_DESKTOP" \
             text/html \
             application/xhtml+xml \
             x-scheme-handler/http \
@@ -105,6 +132,54 @@ configure_default_browser() {
             x-scheme-handler/about \
             x-scheme-handler/unknown
     '
+}
+
+validate_lact_hardware() {
+    local config_file=$1
+    local sysfs_root=${2:-/sys/bus/pci/devices}
+    local gpu_key pci_id subsystem_id pci_address extra vendor device subsystem_vendor subsystem_device
+    local actual_vendor actual_device actual_subsystem_vendor actual_subsystem_device device_dir
+
+    gpu_key=$(awk '
+        /^gpus:$/ { in_gpus=1; next }
+        in_gpus && /^  [^ ]/ {
+            sub(/^  /, "")
+            sub(/:$/, "")
+            print
+            exit
+        }
+    ' "$config_file")
+    [[ -n $gpu_key ]] || die "LACT config contains no GPU identity: $config_file"
+
+    IFS=- read -r pci_id subsystem_id pci_address extra <<<"$gpu_key"
+    [[ -z ${extra:-} && -n $pci_address ]] || die "unrecognized LACT GPU identity: $gpu_key"
+    IFS=: read -r vendor device <<<"$pci_id"
+    IFS=: read -r subsystem_vendor subsystem_device <<<"$subsystem_id"
+    device_dir="$sysfs_root/$pci_address"
+    [[ -d $device_dir ]] || die "LACT GPU is not present at PCI address $pci_address"
+
+    actual_vendor=$(<"$device_dir/vendor")
+    actual_device=$(<"$device_dir/device")
+    actual_subsystem_vendor=$(<"$device_dir/subsystem_vendor")
+    actual_subsystem_device=$(<"$device_dir/subsystem_device")
+    actual_vendor=${actual_vendor#0x}
+    actual_device=${actual_device#0x}
+    actual_subsystem_vendor=${actual_subsystem_vendor#0x}
+    actual_subsystem_device=${actual_subsystem_device#0x}
+
+    [[ ${vendor^^}:${device^^}-${subsystem_vendor^^}:${subsystem_device^^} == \
+        ${actual_vendor^^}:${actual_device^^}-${actual_subsystem_vendor^^}:${actual_subsystem_device^^} ]] \
+        || die "LACT config GPU identity does not match hardware at $pci_address"
+}
+
+restore_lact_config() {
+    [[ ${RESTORE_LACT_CONFIG:-0} == 1 ]] || return 0
+    local source_file="$DOTFILES_DIR/etc/lact/config.yaml"
+
+    section "Restoring hardware-specific LACT configuration"
+    [[ -f $source_file ]] || die "LACT snapshot not found: $source_file"
+    validate_lact_hardware "$source_file"
+    install -Dm644 "$source_file" /etc/lact/config.yaml
 }
 
 install_dotfiles_system_files() {
@@ -144,4 +219,6 @@ run_dotfiles_install() {
     stow_dotfiles
     configure_default_browser
     install_dotfiles_system_files
+    restore_lact_config
+    enable_target_user_services
 }

@@ -1,5 +1,9 @@
 # Create Config
 
+- On an x86_64 Arch host, install `qemu-user-static` and
+  `qemu-user-static-binfmt`, then verify
+  `/proc/sys/fs/binfmt_misc/qemu-aarch64` exists. The Compose services force
+  `linux/arm64` and cannot run without AArch64 binfmt registration.
 - `docker compose run --rm kernel-config`
 
 # Compile Kernel

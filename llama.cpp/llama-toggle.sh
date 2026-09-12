@@ -72,8 +72,9 @@ case "${1:-menu}" in
         ;;
     menu)
         status="$(current_mode)"
-        choice="$(printf 'Use non-MTP\nUse MTP\nStop llama.cpp\n' \
-            | rofi -dmenu -i -p "llama.cpp: $status")"
+        choice="$(zenity --list --title="llama.cpp: $status" \
+            --text="Choose the model server mode" --column="Action" \
+            "Use non-MTP" "Use MTP" "Stop llama.cpp")"
 
         case "$choice" in
             "Use non-MTP") start "non-MTP" ;;

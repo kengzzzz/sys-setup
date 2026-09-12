@@ -12,8 +12,20 @@ curl -fsSL https://raw.githubusercontent.com/kengzzzz/sys-setup/main/archlinux.s
 ```
 
 The installer is opinionated for my workstation: custom `linux-bore-flto-pgo`
-primary kernel, CachyOS LTS fallback kernel, systemd-networkd, systemd-boot,
-Hyprland desktop packages, YubiKey PAM auth, and private dotfiles setup.
+primary kernel, CachyOS LTS fallback kernel, NetworkManager with a static
+profile, systemd-boot, Hyprland/Quickshell desktop packages, YubiKey PAM auth,
+and private dotfiles setup.
+
+Secure Boot must be disabled in firmware before installation. The installer
+does not create or enroll keys or sign EFI/kernel artifacts, and it refuses to
+continue when Secure Boot is enabled. Do not re-enable it afterward unless the
+bootloader and every installed kernel have been signed through a separately
+managed, recoverable workflow.
+
+The repository's GPU-container and ARM64-container prerequisites are installed
+by default. Pass `--no-workloads` to omit them. The LACT daemon is installed and
+enabled, but the GPU-specific dotfiles snapshot is only restored when
+`--restore-lact-config` is passed and its PCI identity matches the target GPU.
 
 ## WSL2 + Debian
 
@@ -33,8 +45,9 @@ Windows ssh-agent (YubiKey). See [`wsl2/README.md`](wsl2/README.md).
 ## Local checks
 
 ```bash
-bash -n archlinux.sh archlinux/install.sh archlinux/chroot.sh lib/*.sh archlinux/lib/*.sh archlinux/tests/run.sh wsl2/provision.sh
+bash -n archlinux.sh archlinux/install.sh archlinux/chroot.sh lib/*.sh archlinux/lib/*.sh archlinux/tests/run.sh wsl2/provision.sh wsl2/tests/run.sh llama.cpp/llama-toggle.sh
 archlinux/tests/run.sh
+wsl2/tests/run.sh
 archlinux/install.sh --help
 wsl2/provision.sh --help
 ```
