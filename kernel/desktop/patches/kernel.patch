@@ -1,0 +1,131 @@
+--- PKGBUILD
++++ PKGBUILD
+@@ -20,7 +20,7 @@
+ # 'eevdf' - select 'EEVDF Scheduler'
+ # 'rt' - select EEVDF, but includes a series of realtime patches
+ # 'rt-bore' - select Burst-Oriented Response Enhancer, but includes a series of realtime patches
+-: "${_cpusched:=cachyos}"
++: "${_cpusched:=bore}"
+ 
+ ### Tweak kernel options prior to a build via nconfig
+ : "${_makenconfig:=no}"
+@@ -84,7 +84,7 @@
+ # - "native" (use compiler autodetection)
+ # - "zen4" (Use znver4 compiler optimizations)
+ # - "generic" (kernel's default - to share the package between machines with different CPU µarch as long as they are x86-64)
+-: "${_processor_opt:=}"
++: "${_processor_opt:=native}"
+ 
+ # Clang LTO mode, only available with the "llvm" compiler - options are "none", "full" or "thin".
+ # ATTENTION - one of three predefined values should be selected!
+@@ -92,7 +92,7 @@
+ # "thin: uses multiple threads, faster and uses less memory, may have a lower runtime performance than Full."
+ # "thin-dist: Similar to thin, but uses a distributed model rather than in-process: https://discourse.llvm.org/t/rfc-distributed-thinlto-build-for-kernel/85934"
+ # "none: disable LTO
+-: "${_use_llvm_lto:=thin}"
++: "${_use_llvm_lto:=full}"
+ 
+ # Use suffix -lto only when requested by the user
+ # yes - enable -lto suffix
+@@ -119,7 +119,7 @@
+ # Builds the open nvidia module and package it into a own base
+ # This does replace the requirement of nvidia-open-dkms
+ # Use this only if you have Turing+ GPU
+-: "${_build_nvidia_open:=no}"
++: "${_build_nvidia_open:=yes}"
+ 
+ # Builds the r8125 module and package it into its own package
+ # Replaces requirement for r8125-dkms
+@@ -136,10 +136,10 @@
+ # 3. Profile the kernel and convert the profile, see Generating the Profile for AutoFDO
+ # 4. Put the profile into the sourcedir
+ # 5. Run kernel build again with the _autofdo_profile_name path to profile specified
+-: "${_autofdo:=no}"
++: "${_autofdo:=yes}"
+ 
+ # Name for the AutoFDO profile
+-: "${_autofdo_profile_name:=}"
++: "${_autofdo_profile_name:=kernel.afdo}"
+ 
+ # Propeller should be applied, after the kernel is optimized with AutoFDO
+ # Workflow:
+@@ -161,17 +161,12 @@
+ }
+ 
+ _is_ci_build() {
++    _set_profile_build_flags
+     [[ -n "$CI" || -n "$GITHUB_RUN_ID" ]]
+     return $?
+ }
+ 
+-if _is_lto_kernel && [ "$_use_lto_suffix" = "yes"  ]; then
+-    _pkgsuffix=cachyos-lto
+-elif ! _is_lto_kernel && [ "$_use_gcc_suffix" = "yes" ]; then
+-    _pkgsuffix=cachyos-gcc
+-else
+-    _pkgsuffix=cachyos
+-fi
++_pkgsuffix=bore-flto-pgo
+ 
+ pkgbase="linux-$_pkgsuffix"
+ _major=7.2
+@@ -182,7 +177,7 @@
+ _tagrel=1
+ pkgrel=1
+ _srcname=cachyos-${_major}.${_minor}-${_tagrel}
+-pkgdesc='Linux EEVDF + LTO + AutoFDO + Propeller Cachy Sauce Kernel by CachyOS with other patches and improvements.'
++pkgdesc='Linux BORE + FullLTO + AutoFDO with other patches and improvements by CachyOS.'
+ _kernver="$pkgver-$pkgrel"
+ _kernuname="${pkgver}-${_pkgsuffix}"
+ arch=('x86_64')
+@@ -291,7 +286,18 @@
+ 
+ _die() { error "$@" ; exit 1; }
+ 
++# makepkg -e skips prepare(); srcdir is only defined when functions run.
++_set_profile_build_flags() {
++    if [ "$_autofdo" = "yes" ] && [ -n "$_autofdo_profile_name" ]; then
++        BUILD_FLAGS+=(CLANG_AUTOFDO_PROFILE="${srcdir}/${_autofdo_profile_name}")
++    fi
++    if [ "$_propeller" = "yes" ] && [ "$_propeller_profiles" = "yes" ]; then
++        BUILD_FLAGS+=(CLANG_PROPELLER_PROFILE_PREFIX="${srcdir}/propeller")
++    fi
++}
++
+ prepare() {
++    _set_profile_build_flags
+     cd "$_srcname"
+ 
+     echo "Setting version..."
+@@ -462,7 +468,6 @@
+ 
+     if [ "$_autofdo" = "yes" ] && [ -n "$_autofdo_profile_name" ]; then
+         echo "AutoFDO profile has been found..."
+-        BUILD_FLAGS+=(CLANG_AUTOFDO_PROFILE="${srcdir}/${_autofdo_profile_name}")
+     fi
+ 
+     # Propeller Optimization
+@@ -472,7 +477,6 @@
+ 
+     if [ "$_propeller" = "yes" ] && [ "$_propeller_profiles" = "yes" ]; then
+         echo "Propeller profile has been found..."
+-        BUILD_FLAGS+=(CLANG_PROPELLER_PROFILE_PREFIX="${srcdir}/propeller")
+     fi
+ 
+     ### Optionally use running kernel's config
+@@ -545,6 +549,7 @@
+ }
+ 
+ build() {
++    _set_profile_build_flags
+     cd "$_srcname"
+     make "${BUILD_FLAGS[@]}" -j"$(nproc)" all
+ 
+@@ -588,6 +593,7 @@
+ }
+ 
+ _package() {
++    _set_profile_build_flags
+     pkgdesc="The $pkgdesc kernel and modules"
+     depends=('coreutils' 'kmod' 'initramfs')
+     optdepends=('wireless-regdb: to set the correct wireless channels of your country'

@@ -6,3 +6,6 @@ models/
 .env
 .env.turboquant
 tailscale
+
+# Desktop Compose pins are versioned build inputs.
+!kernel/desktop/.env

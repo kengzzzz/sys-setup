@@ -91,10 +91,10 @@ build_custom_kernel_packages() {
 
     retry systemctl start docker
     (
-        cd "$kernel_dir"
-        retry docker compose run --rm kernel-builder
+        cd "$kernel_dir" || exit
+        retry docker compose run --rm --build kernel-builder
     )
-    CUSTOM_KERNEL_PACKAGES_DIR="$kernel_dir/out"
+    CUSTOM_KERNEL_PACKAGES_DIR="$kernel_dir/out/kernel"
 }
 
 validate_custom_kernel_packages() {
@@ -109,6 +109,8 @@ validate_custom_kernel_packages() {
 
     ((${#kernel_packages[@]} > 0)) || die "custom kernel package not found in $CUSTOM_KERNEL_PACKAGES_DIR"
     ((${#nvidia_packages[@]} > 0)) || die "custom kernel NVIDIA package not found in $CUSTOM_KERNEL_PACKAGES_DIR"
+    ((${#kernel_packages[@]} == 1)) || die "multiple custom kernel versions in $CUSTOM_KERNEL_PACKAGES_DIR; archive older packages"
+    ((${#nvidia_packages[@]} == 1)) || die "multiple custom kernel NVIDIA versions in $CUSTOM_KERNEL_PACKAGES_DIR; archive older packages"
     CUSTOM_KERNEL_PACKAGES=("${kernel_packages[@]}" "${nvidia_packages[@]}")
 }
 

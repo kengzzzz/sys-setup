@@ -1,0 +1,66 @@
+name: desktop
+
+x-build-args: &build-args
+  ARCH_IMAGE_DIGEST: ${ARCH_IMAGE_DIGEST:?set ARCH_IMAGE_DIGEST}
+  CACHYOS_REPO_FLAVOR: ${CACHYOS_REPO_FLAVOR:-auto}
+  KERNEL_GIT_REMOTE: ${KERNEL_GIT_REMOTE:?set KERNEL_GIT_REMOTE}
+  KERNEL_REF: ${KERNEL_REF:?set KERNEL_REF}
+  KERNEL_SOURCE_SUBDIR: ${KERNEL_SOURCE_SUBDIR:?set KERNEL_SOURCE_SUBDIR}
+
+x-kernel-build: &kernel-build
+  context: ..
+  dockerfile: desktop/Dockerfile
+  target: kernel-toolchain
+  args: *build-args
+
+x-kernel-service: &kernel-service
+  network_mode: host
+  environment:
+    KERNEL_SOURCE_SUBDIR: ${KERNEL_SOURCE_SUBDIR:?set KERNEL_SOURCE_SUBDIR}
+  tmpfs:
+    - /build:rw,exec,size=${BUILD_TMPFS_SIZE:-64G},mode=1777
+  volumes:
+    - ./scripts:/scripts:ro
+    - ./out:/out
+
+services:
+  kernel-builder: &final-service
+    <<: *kernel-service
+    build:
+      <<: *kernel-build
+      args:
+        <<: *build-args
+        PATCH_FILE: kernel.patch
+    image: desktop-kernel-toolchain
+    command: [bash, /scripts/build-kernel.sh, kernel]
+
+  kernel-config:
+    <<: *final-service
+    command: [bash, /scripts/build-kernel.sh, kernel, --config-only]
+
+  kernel-autofdo:
+    <<: *kernel-service
+    build:
+      <<: *kernel-build
+      args:
+        <<: *build-args
+        PATCH_FILE: autofdo.patch
+    image: desktop-kernel-autofdo
+    command: [bash, /scripts/build-kernel.sh, autofdo]
+
+  autofdo:
+    privileged: true
+    pid: host
+    build:
+      context: ..
+      dockerfile: desktop/Dockerfile
+      target: autofdo-profiler
+      args: *build-args
+    image: desktop-autofdo
+    tmpfs:
+      - /build:rw,exec,size=${BUILD_TMPFS_SIZE:-64G},mode=1777
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./profiles:/profiles
+      - ./out:/out:ro
+    command: [bash, /scripts/generate-autofdo-profile.sh]

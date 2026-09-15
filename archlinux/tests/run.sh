@@ -166,6 +166,40 @@ if printf '%s\n' "${CUSTOM_KERNEL_PACKAGES[@]}" | grep -q -- '-headers-\|-dbg-';
     exit 1
 fi
 
+# Multiple versions must not be passed together to pacman.
+touch "$CUSTOM_KERNEL_PACKAGES_DIR/linux-bore-flto-pgo-2-1-x86_64.pkg.tar.zst"
+if (validate_custom_kernel_packages) >/dev/null 2>&1; then
+    printf 'FAIL: custom kernel validation accepted multiple kernel versions\n' >&2
+    exit 1
+fi
+rm "$CUSTOM_KERNEL_PACKAGES_DIR/linux-bore-flto-pgo-2-1-x86_64.pkg.tar.zst"
+touch "$CUSTOM_KERNEL_PACKAGES_DIR/linux-bore-flto-pgo-nvidia-open-2-1-x86_64.pkg.tar.zst"
+if (validate_custom_kernel_packages) >/dev/null 2>&1; then
+    printf 'FAIL: custom kernel validation accepted multiple NVIDIA versions\n' >&2
+    exit 1
+fi
+
+(
+    # Exercise defaults and build output derivation without host operations.
+    # shellcheck source=../lib/config.sh
+    source "$ROOT_DIR/lib/config.sh"
+    unset CUSTOM_KERNEL_DIR CUSTOM_KERNEL_PACKAGES_DIR
+    set_default_config
+    assert_eq kernel/desktop "$CUSTOM_KERNEL_DIR" "desktop workspace default"
+    assert_eq linux-bore-flto-pgo "$PRIMARY_KERNEL" "package name remains descriptive"
+    SCRIPT_DIR="$ROOT_DIR"
+    retry() { printf '%s\n' "$*" >> "$tmpdir/build-commands"; }
+    build_custom_kernel_packages >/dev/null
+    assert_eq "$(cd "$ROOT_DIR/.." && pwd)/kernel/desktop/out/kernel" "$CUSTOM_KERNEL_PACKAGES_DIR" "desktop package output"
+    grep -Fxq 'docker compose run --rm --build kernel-builder' "$tmpdir/build-commands"
+    CUSTOM_KERNEL_DIR=custom/workspace
+    CUSTOM_KERNEL_PACKAGES_DIR="$tmpdir/packages"
+    set_default_config
+    build_custom_kernel_packages
+    assert_eq custom/workspace "$CUSTOM_KERNEL_DIR" "workspace override preserved"
+    assert_eq "$tmpdir/packages" "$CUSTOM_KERNEL_PACKAGES_DIR" "package override preserved"
+)
+
 for package in docs swayidle xsettingsd etc usr utils; do
     if printf '%s\n' "${ARCH_STOW_PACKAGES[@]}" | grep -qx "$package"; then
         printf 'FAIL: %s should not be in the Arch Stow allowlist\n' "$package" >&2

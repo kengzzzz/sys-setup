@@ -1,56 +1,34 @@
 # sys-setup
 
-Personal system setup scripts for Arch Linux, custom kernels, and local
-performance/container experiments.
+Personal Arch Linux, WSL2 and kernel setup scripts.
 
-## Arch Linux install
+## Arch Linux
 
-Boot an Arch ISO, connect networking, then run:
+Boot an Arch ISO in UEFI mode with Secure Boot disabled and networking connected:
 
-```bash
+```sh
 curl -fsSL https://raw.githubusercontent.com/kengzzzz/sys-setup/main/archlinux.sh | bash
 ```
 
-The installer is opinionated for my workstation: custom `linux-bore-flto-pgo`
-primary kernel, CachyOS LTS fallback kernel, NetworkManager with a static
-profile, systemd-boot, Hyprland/Quickshell desktop packages, YubiKey PAM auth,
-and private dotfiles setup.
+Sets up my workstation: Hyprland/Quickshell, systemd-boot, static networking,
+YubiKey authentication, dotfiles, and a custom kernel with a CachyOS LTS fallback.
 
-Secure Boot must be disabled in firmware before installation. The installer
-does not create or enroll keys or sign EFI/kernel artifacts, and it refuses to
-continue when Secure Boot is enabled. Do not re-enable it afterward unless the
-bootloader and every installed kernel have been signed through a separately
-managed, recoverable workflow.
-
-The repository's GPU-container and ARM64-container prerequisites are installed
-by default. Pass `--no-workloads` to omit them. The LACT daemon is installed and
-enabled, but the GPU-specific dotfiles snapshot is only restored when
-`--restore-lact-config` is passed and its PCI identity matches the target GPU.
+From a local checkout, use `bash archlinux/install.sh --dry-run` to preview the
+installation, or `--help` for options.
 
 ## WSL2 + Debian
 
-Stand up a fresh WSL2 Debian dev box from a Windows host. From an **elevated**
-PowerShell:
+Run in elevated PowerShell:
 
 ```powershell
 irm https://raw.githubusercontent.com/kengzzzz/sys-setup/main/wsl2.ps1 -OutFile wsl2.ps1
 powershell -ExecutionPolicy Bypass -File .\wsl2.ps1
 ```
 
-`wsl2.ps1` installs WSL2 + Debian (default, systemd on, stock kernel),
-creates the user, then runs `wsl2/provision.sh` inside the distro to install the
-zsh shell environment and clone/stow the private dotfiles over a forwarded
-Windows ssh-agent (YubiKey). See [`wsl2/README.md`](wsl2/README.md).
+See [WSL2 setup](wsl2/README.md) for prerequisites and configuration.
 
-## Local checks
+## Kernels
 
-```bash
-bash -n archlinux.sh archlinux/install.sh archlinux/chroot.sh lib/*.sh archlinux/lib/*.sh archlinux/tests/run.sh wsl2/provision.sh wsl2/tests/run.sh llama.cpp/llama-toggle.sh
-archlinux/tests/run.sh
-wsl2/tests/run.sh
-archlinux/install.sh --help
-wsl2/provision.sh --help
-```
-
-Use `archlinux/install.sh --dry-run` to inspect prompts and the selected plan
-without building the kernel or touching disks.
+- [Desktop build and install](kernel/desktop/README.md) — packages in `kernel/desktop/out/kernel/`.
+- [AutoFDO / Propeller profiling](kernel/desktop/docs/profiling.md).
+- [Raspberry Pi and benchmarks](kernel/README.md).

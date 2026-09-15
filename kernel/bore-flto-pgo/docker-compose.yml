@@ -1,3 +1,0 @@
-include:
-  - path: ../common/compose/cachyos.yml
-    env_file: variant.env

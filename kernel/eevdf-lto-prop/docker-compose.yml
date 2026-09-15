@@ -1,5 +1,0 @@
-include:
-  - path: ../common/compose/cachyos.yml
-    env_file: variant.env
-  - path: ../common/compose/cachyos-propeller.yml
-    env_file: variant.env
