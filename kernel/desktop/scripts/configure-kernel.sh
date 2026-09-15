@@ -26,7 +26,7 @@ before=$(mktemp)
 trap 'rm -f "$before"' EXIT
 cp .config "$before"
 
-# Keep AMDGPU: it selects DRM_DISPLAY_HDCP_HELPER for nvidia-drm 615.71.09.
+# Keep AMDGPU: it selects DRM_DISPLAY_HDCP_HELPER needed by nvidia-drm.
 disable=(
     X86_INTEL_LPSS X86_MCE_INTEL PERF_EVENTS_INTEL_UNCORE
     PERF_EVENTS_INTEL_CSTATE X86_SGX KVM_INTEL EFI_HANDOVER_PROTOCOL
