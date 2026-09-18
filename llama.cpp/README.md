@@ -3,7 +3,10 @@
 - install the NVIDIA driver plus `nvidia-container-toolkit` on the Docker host;
   the Compose services request `gpus: all`
 - verify GPU containers before building with
-  `docker run --rm --gpus all nvidia/cuda:13.0.0-base-ubuntu24.04 nvidia-smi`
+  `docker run --rm --gpus all nvidia/cuda:13.3.1-base-ubuntu24.04 nvidia-smi`
+- after replacing the GPU or driver, regenerate a stale CDI spec with
+  `sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml` if `nvidia-smi`
+  works in Docker but CUDA initialization fails
 - `docker compose build llama-server`
 
 # Configure Model

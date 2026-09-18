@@ -60,7 +60,7 @@ ARG CUDA_COMPRESSION_MODE
 ARG LLAMA_CPP_COMMIT
 ARG CMAKE_BUILD_PARALLEL_LEVEL
 ARG GGML_CUDA_FA
-ARG GGML_CUDA_FA_ALL_QUANTS
+ARG GGML_CUDA_FA_QUANTS
 ARG GGML_CUDA_GRAPHS
 ARG GGML_CUDA_PEER_MAX_BATCH_SIZE
 ARG GGML_CUDA_FORCE_MMQ
@@ -78,7 +78,7 @@ RUN set -euo pipefail; \
       -DGGML_CUDA_NCCL=OFF \
       -DGGML_CUDA_COMPRESSION_MODE="${CUDA_COMPRESSION_MODE}" \
       -DGGML_CUDA_FA="${GGML_CUDA_FA}" \
-      -DGGML_CUDA_FA_ALL_QUANTS="${GGML_CUDA_FA_ALL_QUANTS}" \
+      -DGGML_CUDA_FA_QUANTS="${GGML_CUDA_FA_QUANTS}" \
       -DGGML_CUDA_GRAPHS="${GGML_CUDA_GRAPHS}" \
       -DGGML_CUDA_PEER_MAX_BATCH_SIZE="${GGML_CUDA_PEER_MAX_BATCH_SIZE}" \
       -DGGML_CUDA_FORCE_MMQ="${GGML_CUDA_FORCE_MMQ}" \
@@ -113,7 +113,7 @@ ARG LLAMA_CPP_COMMIT
 ARG CUDA_ARCH
 ARG CUDA_COMPRESSION_MODE
 ARG GGML_CUDA_FA
-ARG GGML_CUDA_FA_ALL_QUANTS
+ARG GGML_CUDA_FA_QUANTS
 ARG GGML_CUDA_GRAPHS
 ARG GGML_CUDA_PEER_MAX_BATCH_SIZE
 ARG GGML_CUDA_FORCE_MMQ
@@ -133,7 +133,7 @@ LABEL org.opencontainers.image.source="https://github.com/ggml-org/llama.cpp" \
       org.ggml.llama.cuda.arch="${CUDA_ARCH}" \
       org.ggml.llama.cuda.compression_mode="${CUDA_COMPRESSION_MODE}" \
       org.ggml.llama.cuda.fa="${GGML_CUDA_FA}" \
-      org.ggml.llama.cuda.fa_all_quants="${GGML_CUDA_FA_ALL_QUANTS}" \
+      org.ggml.llama.cuda.fa_quants="${GGML_CUDA_FA_QUANTS}" \
       org.ggml.llama.cuda.graphs="${GGML_CUDA_GRAPHS}" \
       org.ggml.llama.cuda.peer_max_batch_size="${GGML_CUDA_PEER_MAX_BATCH_SIZE}" \
       org.ggml.llama.cuda.force_mmq="${GGML_CUDA_FORCE_MMQ}" \
