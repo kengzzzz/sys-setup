@@ -1,0 +1,60 @@
+diff --git a/src/nvidia-modeset/src/nvkms-hdmi.c b/src/nvidia-modeset/src/nvkms-hdmi.c
+index a4e4f76..cb87b70 100644
+--- a/src/nvidia-modeset/src/nvkms-hdmi.c
++++ b/src/nvidia-modeset/src/nvkms-hdmi.c
+@@ -63,6 +63,8 @@
+ #define SRC_TEST_CONFIG_DSC_FRL_MAX_OFFSET 6
+ #define SRC_TEST_CONFIG_FRL_MAX_OFFSET     7
+ 
++#define HDMI_FRL_REASSESS_DELAY_USEC 900000ULL
++
+ static enum NvKmsFrlRateForce GetForceMaxFrlRateType(
+     const NVDpyEvoRec *pDpyEvo,
+     const NVDpyId displayId);
+@@ -2151,6 +2153,7 @@ NvBool nvHdmiFrlAssessLink(NVDpyEvoPtr pDpyEvo)
+     const NvU32 displayId = nvDpyIdToNvU32(pDpyEvo->pConnectorEvo->displayId);
+     NvBool bIsDisplayActive = NV_FALSE;
+     NvBool bPerformLinkTrainingToAssess = NV_TRUE;
++    NvBool bDelayedRetry = NV_FALSE;
+     HDMI_FRL_DATA_RATE currFRLRate = HDMI_FRL_DATA_RATE_NONE;
+ 
+     nvAssert(nvDpyIsHdmiEvo(pDpyEvo) && nvHdmiDpySupportsFrl(pDpyEvo));
+@@ -2174,6 +2177,7 @@ NvBool nvHdmiFrlAssessLink(NVDpyEvoPtr pDpyEvo)
+     nvAssert(displayId != 0);
+     nvAssert(pDpyEvo->parsedEdid.valid);
+ 
++assess_link:
+     ret = NvHdmi_AssessLinkCapabilities2(pDevEvo->hdmiLib.handle,
+                                          pDispEvo->displayOwner,
+                                          displayId,
+@@ -2188,6 +2192,30 @@ NvBool nvHdmiFrlAssessLink(NVDpyEvoPtr pDpyEvo)
+         return FALSE;
+     }
+ 
++    if ((pDpyEvo->hdmi.sinkCaps.linkMaxFRLRate == HDMI_FRL_DATA_RATE_NONE) &&
++        !bIsDisplayActive &&
++        !pDpyEvo->hdmi.reassessFrlLinkCaps &&
++        !bDelayedRetry) {
++        bDelayedRetry = NV_TRUE;
++
++        nvEvoLogDisp(pDispEvo, EVO_LOG_WARN,
++                     "HDMI FRL assessment exhausted; retrying once after 900 ms");
++
++        nvkms_usleep(HDMI_FRL_REASSESS_DELAY_USEC);
++        goto assess_link;
++    }
++
++    if (bDelayedRetry) {
++        if (pDpyEvo->hdmi.sinkCaps.linkMaxFRLRate !=
++                HDMI_FRL_DATA_RATE_NONE) {
++            nvEvoLogDisp(pDispEvo, EVO_LOG_INFO,
++                         "Delayed HDMI FRL reassessment succeeded");
++        } else {
++            nvEvoLogDisp(pDispEvo, EVO_LOG_ERROR,
++                         "Delayed HDMI FRL reassessment also exhausted");
++        }
++    }
++
+     return pDpyEvo->hdmi.sinkCaps.linkMaxFRLRate != HDMI_FRL_DATA_RATE_NONE;
+ }
+ 

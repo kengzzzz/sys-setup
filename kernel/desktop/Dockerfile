@@ -42,9 +42,12 @@ RUN test -n "${KERNEL_REF}" && \
 COPY desktop/scripts/check-profile-inputs.sh /usr/local/bin/check-profile-inputs
 COPY desktop/scripts/check-profile-inputs.sh /usr/local/bin/check-profile-inputs
 COPY desktop/patches/${PATCH_FILE} ${KERNEL_SOURCE_SUBDIR}/pkgbuild.patch
+COPY desktop/patches/pkgbuild-nvidia-local.patch ${KERNEL_SOURCE_SUBDIR}/pkgbuild-nvidia-local.patch
+COPY desktop/nvidia-local/0004-local-hdmi-quirk.patch ${KERNEL_SOURCE_SUBDIR}/0004-local-hdmi-quirk.patch
 COPY desktop/profiles/ ${KERNEL_SOURCE_SUBDIR}/
 
 RUN cd "${KERNEL_SOURCE_SUBDIR}" && patch --batch --fuzz=0 PKGBUILD < pkgbuild.patch && \
+    patch --batch --fuzz=0 PKGBUILD < pkgbuild-nvidia-local.patch && \
     bash /usr/local/bin/check-profile-inputs PKGBUILD
 
 FROM cachyos-base AS autofdo-profiler
