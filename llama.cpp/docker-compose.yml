@@ -1,7 +1,7 @@
 x-llama-build-args: &llama-build-args
   BASE_CUDA_DEV_CONTAINER: nvidia/cuda@sha256:4ff859525f99de5782aa73607ce24219b07dddd48d12b97c1c301d7e1cfb0a87 # nvidia/cuda version: 13.3.1-devel-ubuntu24.04
-  LLAMA_CPP_REPO: https://github.com/PrismML-Eng/llama.cpp.git
-  LLAMA_CPP_COMMIT: 9a9394a895b96003ca842a6041cb28ac49a108f7
+  LLAMA_CPP_REPO: https://github.com/ggml-org/llama.cpp.git
+  LLAMA_CPP_COMMIT: b23701f77d47dad9de834d59ebfcbe25c9e8b46f
   CUDA_ARCH: 120a-real
   CUDA_COMPRESSION_MODE: speed
   GGML_CUDA_FA: "ON"
@@ -69,6 +69,8 @@ services:
       - net_admin
       - net_raw
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:${LLAMA_ARG_PORT:-8080}:${LLAMA_ARG_PORT:-8080}"
 
   llama-server:
     <<: *llama-service

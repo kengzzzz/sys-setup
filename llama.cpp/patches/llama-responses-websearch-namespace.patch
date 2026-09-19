@@ -1,0 +1,230 @@
+diff --git a/tests/test-chat.cpp b/tests/test-chat.cpp
+index d21729111..e65845d44 100644
+--- a/tests/test-chat.cpp
++++ b/tests/test-chat.cpp
+@@ -1972,6 +1972,55 @@ static void test_convert_responses_to_chatcmpl() {
+         assert_equals(true, tool.at("function").at("strict").get<bool>());
+     }
+ 
++    // Test Codex websearch namespace conversion and follow-up history
++    {
++        json input = json::parse(R"({
++            "input": [
++                {
++                    "type": "function_call",
++                    "call_id": "call_123",
++                    "namespace": "mcp__websearch",
++                    "name": "search",
++                    "arguments": "{\"query\":\"llama.cpp\"}"
++                }
++            ],
++            "tools": [
++                {
++                    "type": "namespace",
++                    "name": "mcp__websearch",
++                    "description": "Search and fetch public web pages.",
++                    "tools": [
++                        {
++                            "type": "function",
++                            "name": "search",
++                            "description": "Search the web.",
++                            "parameters": {"type": "object", "properties": {}}
++                        }
++                    ]
++                },
++                {
++                    "type": "namespace",
++                    "name": "unrelated",
++                    "tools": []
++                }
++            ]
++        })");
++
++        json result = server_chat_convert_responses_to_chatcmpl(input);
++        assert_equals((size_t) 1, result.at("tools").size());
++        assert_equals(
++            std::string("llama_websearch__search"),
++            result.at("tools")[0].at("function").at("name").get<std::string>());
++        assert_equals(
++            std::string("llama_websearch__search"),
++            result.at("messages")[0].at("tool_calls")[0].at("function").at("name").get<std::string>());
++
++        std::string decoded_name;
++        assert_equals(true, server_chat_decode_websearch_tool_name("llama_websearch__fetch", decoded_name));
++        assert_equals(std::string("fetch"), decoded_name);
++        assert_equals(false, server_chat_decode_websearch_tool_name("exec_command", decoded_name));
++    }
++
+     // Test non-function Responses tools are ignored
+     {
+         json input = json::parse(R"({
+diff --git a/tools/server/server-chat.cpp b/tools/server/server-chat.cpp
+index a6fe3c6ba..0144906c2 100644
+--- a/tools/server/server-chat.cpp
++++ b/tools/server/server-chat.cpp
+@@ -3,6 +3,22 @@
+ 
+ #include <sstream>
+ 
++static const std::string WEBSEARCH_NAMESPACE = "mcp__websearch";
++static const std::string WEBSEARCH_TOOL_PREFIX = "llama_websearch__";
++
++static std::string server_chat_encode_websearch_tool_name(const std::string & tool_name) {
++    return WEBSEARCH_TOOL_PREFIX + tool_name;
++}
++
++bool server_chat_decode_websearch_tool_name(const std::string & encoded_name, std::string & tool_name) {
++    if (encoded_name.rfind(WEBSEARCH_TOOL_PREFIX, 0) != 0) {
++        return false;
++    }
++
++    tool_name = encoded_name.substr(WEBSEARCH_TOOL_PREFIX.size());
++    return !tool_name.empty();
++}
++
+ json server_chat_convert_responses_to_chatcmpl(const json & response_body) {
+     if (!response_body.contains("input")) {
+         throw std::invalid_argument("'input' is required");
+@@ -167,10 +183,14 @@ json server_chat_convert_responses_to_chatcmpl(const json & response_body) {
+                 item.at("type") == "function_call"
+             ) {
+                 // #responses_create-input-input_item_list-item-function_tool_call
++                std::string tool_name = item.at("name");
++                if (json_value(item, "namespace", std::string()) == WEBSEARCH_NAMESPACE) {
++                    tool_name = server_chat_encode_websearch_tool_name(tool_name);
++                }
+                 json tool_call = {
+                     {"function", json {
+                         {"arguments", item.at("arguments")},
+-                        {"name",      item.at("name")},
++                        {"name",      tool_name},
+                     }},
+                     {"id",   item.at("call_id")},
+                     {"type", "function"},
+@@ -258,6 +278,29 @@ json server_chat_convert_responses_to_chatcmpl(const json & response_body) {
+             json chatcmpl_tool;
+ 
+             const std::string type = json_value(resp_tool, "type", std::string());
++            if (type == "namespace" && json_value(resp_tool, "name", std::string()) == WEBSEARCH_NAMESPACE) {
++                if (!resp_tool.contains("tools") || !resp_tool.at("tools").is_array()) {
++                    throw std::invalid_argument("websearch namespace 'tools' must be an array");
++                }
++                for (json nested_tool : resp_tool.at("tools")) {
++                    if (json_value(nested_tool, "type", std::string()) != "function") {
++                        SRV_WRN("unsupported websearch namespace tool type '%s' skipped\n",
++                                json_value(nested_tool, "type", std::string()).c_str());
++                        continue;
++                    }
++                    nested_tool.erase("type");
++                    nested_tool["name"] = server_chat_encode_websearch_tool_name(
++                        json_value(nested_tool, "name", std::string()));
++                    if (!nested_tool.contains("strict")) {
++                        nested_tool["strict"] = true;
++                    }
++                    chatcmpl_tools.push_back(json {
++                        {"type",     "function"},
++                        {"function", nested_tool},
++                    });
++                }
++                continue;
++            }
+             if (type != "function") {
+                 // Non-function Responses tools have no Chat Completions equivalent.
+                 SRV_WRN("unsupported Responses tool type '%s' skipped\n", type.c_str());
+diff --git a/tools/server/server-chat.h b/tools/server/server-chat.h
+index 86b842650..e4eeefa09 100644
+--- a/tools/server/server-chat.h
++++ b/tools/server/server-chat.h
+@@ -11,6 +11,11 @@
+ // Convert OpenAI Responses API format to OpenAI Chat Completions API format
+ json server_chat_convert_responses_to_chatcmpl(const json & body);
+ 
++// Codex exposes local MCP search as a Responses namespace tool. Chat Completions
++// has no namespace field, so the converter uses a reserved function-name prefix
++// and restores the namespace in Responses output.
++bool server_chat_decode_websearch_tool_name(const std::string & encoded_name, std::string & tool_name);
++
+ // Convert Anthropic Messages API format to OpenAI Chat Completions API format
+ json server_chat_convert_anthropic_to_oai(const json & body);
+ 
+diff --git a/tools/server/server-task.cpp b/tools/server/server-task.cpp
+index 0d3beb313..b2e86319c 100644
+--- a/tools/server/server-task.cpp
++++ b/tools/server/server-task.cpp
+@@ -566,14 +566,20 @@ json server_task_result_cmpl_final::to_json_oaicompat_resp() {
+     }
+ 
+     for (const common_chat_tool_call & tool_call : oaicompat_msg.tool_calls) {
+-        output.push_back(json {
++        std::string tool_name;
++        json output_item = {
+             {"id",        "fc_" + tool_call.id},
+             {"type",      "function_call"},
+             {"status",    "completed"},
+             {"arguments", tool_call.arguments},
+             {"call_id",   "call_" + tool_call.id},
+             {"name",      tool_call.name},
+-        });
++        };
++        if (server_chat_decode_websearch_tool_name(tool_call.name, tool_name)) {
++            output_item["name"] = tool_name;
++            output_item["namespace"] = "mcp__websearch";
++        }
++        output.push_back(output_item);
+     }
+ 
+     std::time_t t = std::time(0);
+@@ -666,7 +672,8 @@ json server_task_result_cmpl_final::to_json_oaicompat_resp_stream() {
+     }
+ 
+     for (const common_chat_tool_call & tool_call : oaicompat_msg.tool_calls) {
+-        const json output_item = {
++        std::string tool_name;
++        json output_item = {
+             {"id",        "fc_" + tool_call.id},
+             {"type",      "function_call"},
+             {"status",    "completed"},
+@@ -674,6 +681,10 @@ json server_task_result_cmpl_final::to_json_oaicompat_resp_stream() {
+             {"call_id",   "call_" + tool_call.id},
+             {"name",      tool_call.name}
+         };
++        if (server_chat_decode_websearch_tool_name(tool_call.name, tool_name)) {
++            output_item["name"] = tool_name;
++            output_item["namespace"] = "mcp__websearch";
++        }
+         server_sent_events.push_back(json {
+             {"event", "response.output_item.done"},
+             {"data", json {
+@@ -1271,18 +1282,24 @@ json server_task_result_cmpl_partial::to_json_oaicompat_resp() {
+         }
+ 
+         if (!diff.tool_call_delta.name.empty()) {
++            std::string tool_name;
++            json output_item = {
++                {"id",        "fc_" + diff.tool_call_delta.id},
++                {"arguments", ""},
++                {"call_id",   "call_" + diff.tool_call_delta.id},
++                {"name",      diff.tool_call_delta.name},
++                {"type",      "function_call"},
++                {"status",    "in_progress"},
++            };
++            if (server_chat_decode_websearch_tool_name(diff.tool_call_delta.name, tool_name)) {
++                output_item["name"] = tool_name;
++                output_item["namespace"] = "mcp__websearch";
++            }
+             events.push_back(json {
+                 {"event", "response.output_item.added"},
+                 {"data", json {
+                     {"type",  "response.output_item.added"},
+-                    {"item", json {
+-                        {"id",        "fc_" + diff.tool_call_delta.id},
+-                        {"arguments", ""},
+-                        {"call_id",   "call_" + diff.tool_call_delta.id},
+-                        {"name",      diff.tool_call_delta.name},
+-                        {"type",      "function_call"},
+-                        {"status",    "in_progress"},
+-                    }},
++                    {"item", output_item},
+                 }},
+             });
+             oai_resp_fc_id = diff.tool_call_delta.id;
