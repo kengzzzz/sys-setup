@@ -1,12 +1,12 @@
 # Non-MTP vs MTP benchmark
 
-- Timestamp (UTC): `2026-09-19T00:11:40Z`
+- Timestamp (UTC): `2026-09-19T07:47:10Z`
 - Host: `x86_64`
 - CPU threads: `32`
 - GPU: `NVIDIA GeForce RTX 5080, 16303 MiB, 615.71.09`
-- Model: `/models/hf-home/hub/models--decent-jawfish--bonsai-2-27b-mtp/snapshots/5edf5f552d45e40b81f0255a8bb443af35850722/Bonsai-2-27B-PQ2_0-MTP.gguf`
+- Model: `/models/hf-home/hub/models--unsloth--Qwen3.8-27B-GGUF/snapshots/4ca720788d1e01f1bff70c033e0d0028fd02e502/Qwen3.8-27B-UD-Q2_K_XL.gguf`
 - Image: `llama-server:latest`
-- Image revision: `9a9394a895b96003ca842a6041cb28ac49a108f7`
+- Image revision: `b23701f77d47dad9de834d59ebfcbe25c9e8b46f`
 
 ## Configuration
 
@@ -21,26 +21,26 @@
 
 | Metric | Non-MTP | MTP | Delta |
 | --- | ---: | ---: | ---: |
-| End-to-end throughput | 89.58 tok/s | 117.45 tok/s | +31.11% |
-| Server decode throughput | 96.96 tok/s | 131.60 tok/s | +35.74% |
-| Total wall time | 44.71 s | 34.10 s | -23.73% |
-| Idle process VRAM | 11,984 MiB | 13,306 MiB | +1,322 MiB |
-| Peak process VRAM | 11,996 MiB | 13,328 MiB | +1,332 MiB |
-| MTP draft acceptance | n/a | 0.669 | n/a |
+| End-to-end throughput | 67.74 tok/s | 105.10 tok/s | +55.14% |
+| Server decode throughput | 72.27 tok/s | 117.29 tok/s | +62.30% |
+| Total wall time | 70.28 s | 45.30 s | -35.54% |
+| Idle process VRAM | 11,534 MiB | 12,512 MiB | +978 MiB |
+| Peak process VRAM | 11,746 MiB | 12,742 MiB | +996 MiB |
+| MTP draft acceptance | n/a | 0.732 | n/a |
 
 ## Per-prompt server throughput
 
 | Prompt | Non-MTP | MTP | Delta | MTP accept rate |
 | --- | ---: | ---: | ---: | ---: |
-| `code_python` | 96.22 tok/s | 132.24 tok/s | +37.44% | 0.683 |
-| `code_cpp` | 95.78 tok/s | 123.99 tok/s | +29.46% | 0.611 |
-| `explain_concept` | 96.25 tok/s | 123.10 tok/s | +27.90% | 0.605 |
-| `summarize` | 96.48 tok/s | 129.74 tok/s | +34.47% | 0.654 |
-| `qa_factual` | 0.00 tok/s | 0.00 tok/s | +0.00% | n/a |
-| `translation` | 96.52 tok/s | 142.29 tok/s | +47.42% | 0.778 |
-| `creative_short` | 96.38 tok/s | 126.45 tok/s | +31.20% | 0.627 |
-| `stepwise_math` | 96.52 tok/s | 139.69 tok/s | +44.73% | 0.750 |
-| `long_code_review` | 0.00 tok/s | 0.00 tok/s | +0.00% | n/a |
+| `code_python` | 71.84 tok/s | 120.60 tok/s | +67.87% | 0.773 |
+| `code_cpp` | 71.79 tok/s | 122.80 tok/s | +71.05% | 0.796 |
+| `explain_concept` | 71.94 tok/s | 109.75 tok/s | +52.57% | 0.658 |
+| `summarize` | 71.75 tok/s | 118.27 tok/s | +64.85% | 0.750 |
+| `qa_factual` | 71.95 tok/s | 126.26 tok/s | +75.48% | 0.832 |
+| `translation` | 71.90 tok/s | 124.30 tok/s | +72.89% | 0.808 |
+| `creative_short` | 71.96 tok/s | 101.08 tok/s | +40.47% | 0.564 |
+| `stepwise_math` | 71.93 tok/s | 133.45 tok/s | +85.53% | 0.911 |
+| `long_code_review` | 71.56 tok/s | 102.78 tok/s | +43.62% | 0.592 |
 
 ## Notes
 
