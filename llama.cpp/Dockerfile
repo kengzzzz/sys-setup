@@ -52,6 +52,7 @@ COPY scripts/ /scripts/
 COPY patches/ /patches/
 RUN git apply /patches/llama-sampling-env.patch
 RUN git apply /patches/llama-responses-system-order.patch
+RUN git apply /patches/llama-qwen35-mtp-hadamard.patch
 
 FROM build-base AS build
 
@@ -128,7 +129,7 @@ ENV LLAMA_ARG_HOST=0.0.0.0 \
     LD_LIBRARY_PATH=/usr/local/lib:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64 \
     PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-LABEL org.opencontainers.image.source="https://github.com/ggml-org/llama.cpp" \
+LABEL org.opencontainers.image.source="https://github.com/PrismML-Eng/llama.cpp" \
       org.opencontainers.image.revision="${LLAMA_CPP_COMMIT}" \
       org.ggml.llama.cuda.arch="${CUDA_ARCH}" \
       org.ggml.llama.cuda.compression_mode="${CUDA_COMPRESSION_MODE}" \
