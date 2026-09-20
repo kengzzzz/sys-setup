@@ -1,5 +1,5 @@
---- PKGBUILD
-+++ PKGBUILD
+--- a/PKGBUILD
++++ b/PKGBUILD
 @@ -20,7 +20,7 @@
  # 'eevdf' - select 'EEVDF Scheduler'
  # 'rt' - select EEVDF, but includes a series of realtime patches

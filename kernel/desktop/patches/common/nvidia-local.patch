@@ -6,7 +6,7 @@
               "${_patchsource}/misc/nvidia/0002-fix-dsc-correct-RC-parameter-tables-to-match-VESA-DS.patch"
 -             "${_patchsource}/misc/nvidia/0003-fix-dp-add-Bigscreen-Beyond-VR-headset-to-WAR-databa.patch")
 +             "${_patchsource}/misc/nvidia/0003-fix-dp-add-Bigscreen-Beyond-VR-headset-to-WAR-databa.patch"
-+             "0004-local-hdmi-quirk.patch")
++             "fix-hdmi-frl-reassessment-after-reconnect.patch")
  fi
  
  # Use generated AutoFDO Profile
@@ -15,7 +15,7 @@
          [[ $src = *.patch ]] || continue
          echo "Applying patch $src..."
 -        if [[ "$patch" == "${_patchsource}"/misc/nvidia/* ]]; then
-+        if [[ "$patch" == "${_patchsource}"/misc/nvidia/* || "$src" == 0004-local-hdmi-quirk.patch ]]; then
++        if [[ "$patch" == "${_patchsource}"/misc/nvidia/* || "$src" == fix-hdmi-frl-reassessment-after-reconnect.patch ]]; then
              patch -Np1 < "../$src" -d "${srcdir}/${_nv_open_pkg}"
          else
              patch -Np1 < "../$src"

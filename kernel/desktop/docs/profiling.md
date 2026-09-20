@@ -27,7 +27,7 @@ docker compose run --rm --build propeller
 Keep its debug package in `out/propeller/`. This collection recipe uses ThinLTO
 and the AutoFDO input; conversion writes `profiles/propeller_{cc,ld}_profile.txt`.
 For final use, select ThinLTO, `_propeller=yes`, and `_propeller_profiles=yes`
-in `patches/kernel.patch`, update its config assertions, then rebuild.
+in `patches/variants/kernel.patch`, update its config assertions, then rebuild.
 Enabling the Compose file alone does not enable final optimization.
 
 To disable it, undo those recipe/assertion changes and select `compose.yaml`.
