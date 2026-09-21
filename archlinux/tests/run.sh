@@ -89,13 +89,13 @@ grep -q '^# -auth      \[success=1 default=bad\]     pam_unix.so' "$tmpdir/syste
 }
 
 for pkg in networkmanager quickshell hypridle uwsm brave-origin-bin lact fzf pkgfile \
-    ripgrep fwupd yubikey-manager wlr-randr pipewire-jack openai-codex zenity; do
+    ripgrep fwupd yubikey-manager wlr-randr pipewire-jack openai-codex zenity zed; do
     if ! printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx "$pkg"; then
         printf 'FAIL: %s should be in official package list\n' "$pkg" >&2
         exit 1
     fi
 done
-for pkg in systemd-networkd waybar swaync rofi swayidle helium-browser-bin kolourpaint sbctl sbsigntools python-pywal vesktop; do
+for pkg in systemd-networkd waybar swaync rofi swayidle helium-browser-bin kolourpaint sbctl sbsigntools python-pywal vesktop vscodium; do
     if printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx "$pkg"; then
         printf 'FAIL: stale package %s should not be in official package list\n' "$pkg" >&2
         exit 1

@@ -31,7 +31,7 @@ OFFICIAL_PACKAGES=(
     btop eza fastfetch freerdp jq bc cpio ripgrep docker bubblewrap gpu-screen-recorder
     pacman-contrib cachyos-settings socat steam stow tailscale docker-compose
     paru
-    docker-buildx accountsservice python-dbus vscodium nwg-look gpu-screen-recorder-ui vesktop-bin pam-u2f
+    docker-buildx accountsservice python-dbus zed nwg-look gpu-screen-recorder-ui vesktop-bin pam-u2f
     networkmanager lact fwupd yubikey-manager wlr-randr openai-codex zenity
 )
 
