@@ -27,6 +27,11 @@ powershell -ExecutionPolicy Bypass -File .\wsl2.ps1
 
 See [WSL2 setup](wsl2/README.md) for prerequisites and configuration.
 
+## Zed
+
+Install the Zed configuration from the separate dotfiles checkout on Linux or
+native Windows through WSL2. See [Zed setup](zed/README.md).
+
 ## Kernels
 
 - [Desktop build and install](kernel/desktop/README.md) — packages in `kernel/desktop/out/kernel/`.
