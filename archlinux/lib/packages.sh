@@ -22,7 +22,7 @@ BASE_PACKAGES=(
 OFFICIAL_PACKAGES=(
     gnu-free-fonts noto-fonts noto-fonts-cjk noto-fonts-emoji noto-fonts-extra
     greetd greetd-tuigreet hyprland swaybg swaylock swayimg hypridle mate-polkit
-    quickshell uwsm xdg-desktop-portal-hyprland xdg-desktop-portal-gtk
+    quickshell uwsm xdg-desktop-portal-hyprland xdg-desktop-portal-gtk gnome-keyring seahorse
     qt5ct qt6ct papirus-icon-theme thunar gvfs tumbler kitty cliphist grim slurp swappy hyprpicker
     pipewire pipewire-pulse pipewire-jack wireplumber pavucontrol blueman brave-origin-bin mpv playerctl qalculate-gtk
     nvidia-utils lib32-nvidia-utils egl-gbm libva-nvidia-driver cpupower
