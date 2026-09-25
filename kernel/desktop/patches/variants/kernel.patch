@@ -78,7 +78,14 @@
  _kernver="$pkgver-$pkgrel"
  _kernuname="${pkgver}-${_pkgsuffix}"
  arch=('x86_64')
-@@ -291,7 +286,18 @@
+@@ -253,3 +248,5 @@
+              "${_patchsource}/misc/nvidia/0002-fix-dsc-correct-RC-parameter-tables-to-match-VESA-DS.patch"
+-             "${_patchsource}/misc/nvidia/0003-fix-dp-add-Bigscreen-Beyond-VR-headset-to-WAR-databa.patch")
++             "${_patchsource}/misc/nvidia/0003-fix-dp-add-Bigscreen-Beyond-VR-headset-to-WAR-databa.patch"
++             "fix-dp-detach-unplugged-1359.patch"
++             "fix-hdmi-frl-reassessment-after-reconnect.patch")
+ fi
+@@ -291,7 +288,18 @@
  
  _die() { error "$@" ; exit 1; }
  
@@ -97,7 +104,12 @@
      cd "$_srcname"
  
      echo "Setting version..."
-@@ -462,7 +468,6 @@
+@@ -307,3 +315,3 @@
+         echo "Applying patch $src..."
+-        if [[ "$patch" == "${_patchsource}"/misc/nvidia/* ]]; then
++        if [[ "$patch" == "${_patchsource}"/misc/nvidia/* || "$src" == fix-dp-detach-unplugged-1359.patch || "$src" == fix-hdmi-frl-reassessment-after-reconnect.patch ]]; then
+             patch -Np1 < "../$src" -d "${srcdir}/${_nv_open_pkg}"
+@@ -462,7 +470,6 @@
  
      if [ "$_autofdo" = "yes" ] && [ -n "$_autofdo_profile_name" ]; then
          echo "AutoFDO profile has been found..."
@@ -105,7 +117,7 @@
      fi
  
      # Propeller Optimization
-@@ -472,7 +477,6 @@
+@@ -472,7 +479,6 @@
  
      if [ "$_propeller" = "yes" ] && [ "$_propeller_profiles" = "yes" ]; then
          echo "Propeller profile has been found..."
@@ -113,7 +125,7 @@
      fi
  
      ### Optionally use running kernel's config
-@@ -545,6 +549,7 @@
+@@ -545,6 +551,7 @@
  }
  
  build() {
@@ -121,7 +133,7 @@
      cd "$_srcname"
      make "${BUILD_FLAGS[@]}" -j"$(nproc)" all
  
-@@ -588,6 +593,7 @@
+@@ -588,6 +595,7 @@
  }
  
  _package() {
