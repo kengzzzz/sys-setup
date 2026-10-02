@@ -13,9 +13,14 @@ source "$SCRIPT_DIR/lib/disk.sh"
 source "$SCRIPT_DIR/lib/packages.sh"
 # shellcheck source=lib/boot.sh
 source "$SCRIPT_DIR/lib/boot.sh"
+# shellcheck source=lib/network.sh
+source "$SCRIPT_DIR/lib/network.sh"
+# shellcheck source=lib/snapshots.sh
+source "$SCRIPT_DIR/lib/snapshots.sh"
 
 DRY_RUN=0
 CONFIG_FILE=
+HOSTNAME=arch-pc
 
 usage() {
     cat <<'EOF'
@@ -76,8 +81,6 @@ copy_installer_to_target() {
     section "Copying installer into target"
     local target_dir=/mnt/root/sys-setup-install
     rm -rf "$target_dir"
-    # Mirror the repo layout in the target so chroot.sh resolves ../lib/common.sh
-    # the same way it does in the source tree.
     mkdir -p "$target_dir/archlinux"
     cp -a "$SCRIPT_DIR/." "$target_dir/archlinux/"
     cp -a "$SCRIPT_DIR/../lib" "$target_dir/lib"
@@ -87,7 +90,7 @@ copy_installer_to_target() {
 
 run_chroot_install() {
     section "Running chroot install"
-    retry arch-chroot /mnt /root/sys-setup-install/archlinux/chroot.sh
+    run arch-chroot /mnt /root/sys-setup-install/archlinux/chroot.sh
 }
 
 main() {
@@ -99,8 +102,10 @@ main() {
         load_config_file "$CONFIG_FILE"
         set_default_config
     fi
+    # Reparse after loading config so CLI options win.
+    parse_args "$@"
 
-    if [[ -r /dev/tty ]]; then
+    if (: </dev/tty) 2>/dev/null; then
         exec </dev/tty
     fi
 
@@ -114,22 +119,25 @@ main() {
         exit 0
     fi
 
+    prepare_live_environment
+    setup_cachyos_repo
+    sync_pacman
     build_custom_kernel_packages
     validate_custom_kernel_packages
+    validate_package_selection
     confirm_destructive_install
     setup_mount_cleanup
-    prepare_live_environment
     partition_disk
     format_partitions
     mount_target
-    setup_cachyos_repo
-    sync_pacman
     pacstrap_base
     generate_fstab
     ROOT_PARTUUID=$(blkid -s PARTUUID -o value "$ROOT_PARTITION")
     copy_installer_to_target
     copy_custom_kernel_packages_to_target
     run_chroot_install
+    configure_resolver_link
+    create_initial_snapshot
     final_unmount
     section "Installation complete"
     log "reboot into the installed system when ready"

@@ -3,7 +3,7 @@
 partition_suffix() {
     local disk=$1
 
-    if [[ $disk == *nvme* || $disk == *mmcblk* || $disk == *loop* ]]; then
+    if [[ $disk =~ [0-9]$ ]]; then
         printf 'p'
     fi
 }
@@ -26,6 +26,24 @@ prepare_live_environment() {
     run mount -o remount,size=20G /run/archiso/cowspace || warn "could not resize archiso cowspace"
 }
 
+validate_target_disk() {
+    TARGET_DISK=$(readlink -f -- "$TARGET_DISK")
+    local disk_type
+    disk_type=$(lsblk -dn -o TYPE "$TARGET_DISK")
+    [[ $disk_type == disk || $disk_type == loop ]] || die "target must be a whole disk: $TARGET_DISK"
+    if [[ ${DRY_RUN:-0} != 1 ]]; then
+        if lsblk -nr -o MOUNTPOINTS "$TARGET_DISK" | grep -q '[^[:space:]]'; then
+            die "target disk or a child device is mounted/in use: $TARGET_DISK"
+        fi
+        if mountpoint -q /mnt || mountpoint -q /mnt/boot; then
+            die "unmount the existing installation target at /mnt before continuing"
+        fi
+    fi
+    sgdisk --pretend --clear -n "1:0:+${EFI_SIZE}" -t 1:ef00 \
+        -n 2:0:0 -t 2:8304 "$TARGET_DISK" >/dev/null \
+        || die "partition layout does not fit $TARGET_DISK"
+}
+
 partition_disk() {
     section "Partitioning $TARGET_DISK"
     derive_partitions
@@ -40,12 +58,34 @@ partition_disk() {
 format_partitions() {
     section "Formatting partitions"
     retry mkfs.fat -F 32 "$EFI_PARTITION"
-    retry mkfs.xfs -f -m crc=1,reflink=1,rmapbt=1 "$ROOT_PARTITION"
+    if [[ $ROOT_FS == btrfs ]]; then
+        retry mkfs.btrfs -f "$ROOT_PARTITION"
+    else
+        retry mkfs.xfs -f -m crc=1,reflink=1,rmapbt=1 "$ROOT_PARTITION"
+    fi
 }
 
 mount_target() {
     section "Mounting target"
-    run mount -o noatime "$ROOT_PARTITION" /mnt
+    if [[ $ROOT_FS == btrfs ]]; then
+        local options=noatime,compress=zstd:3,discard=async
+        local subvolume
+        run mount -o "$options,subvolid=5" "$ROOT_PARTITION" /mnt
+        for subvolume in @ @home @log @cache @docker @containerd @snapshots; do
+            run btrfs subvolume create "/mnt/$subvolume"
+        done
+        run umount /mnt
+        run mount -o "$options,subvol=@" "$ROOT_PARTITION" /mnt
+        run mount --mkdir -o "$options,subvol=@home" "$ROOT_PARTITION" /mnt/home
+        run mount --mkdir -o "$options,subvol=@log" "$ROOT_PARTITION" /mnt/var/log
+        run mount --mkdir -o "$options,subvol=@cache" "$ROOT_PARTITION" /mnt/var/cache
+        run mount --mkdir -o "$options,subvol=@docker" "$ROOT_PARTITION" /mnt/var/lib/docker
+        run mount --mkdir -o "$options,subvol=@containerd" "$ROOT_PARTITION" /mnt/var/lib/containerd
+        run mount --mkdir -o "$options,subvol=@snapshots" "$ROOT_PARTITION" /mnt/.snapshots
+        chmod 700 /mnt/.snapshots
+    else
+        run mount -o noatime "$ROOT_PARTITION" /mnt
+    fi
     run mount --mkdir -o defaults,noatime,umask=0077 "$EFI_PARTITION" /mnt/boot
     mkdir -p /mnt/etc /mnt/var/cache/pacman/pkg /mnt/var/log
     printf 'KEYMAP=%s\n' "$KEYMAP" >/mnt/etc/vconsole.conf
@@ -55,11 +95,8 @@ setup_mount_cleanup() {
     cleanup_mounts() {
         local status=$?
         copy_install_log_to_target
-        if mountpoint -q /mnt/boot; then
-            umount /mnt/boot || true
-        fi
         if mountpoint -q /mnt; then
-            umount /mnt || true
+            umount -R /mnt || true
         fi
         exit "$status"
     }

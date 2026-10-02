@@ -12,6 +12,8 @@ curl -fsSL https://raw.githubusercontent.com/kengzzzz/sys-setup/main/archlinux.s
 
 Sets up my workstation: Hyprland/Quickshell, systemd-boot, static networking,
 YubiKey authentication, dotfiles, and a custom kernel with a CachyOS LTS fallback.
+Uses Btrfs with `discard=async` and automatic package snapshots with EFI backups.
+See [recovery](archlinux/RECOVERY.md).
 
 From a local checkout, use `bash archlinux/install.sh --dry-run` to preview the
 installation, or `--help` for options.

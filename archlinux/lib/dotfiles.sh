@@ -4,26 +4,29 @@ ARCH_STOW_PACKAGES=(
     Thunar
     applications
     autostart
-    btop
+    broadcast-linux
+    claude
     codex
     desktop
     fastfetch
     fontconfig
-    gpu-screen-recorder
     gtk-3.0
     gtk-4.0
     hypr
+    hypr-kblayoutd
     icons
     kitty
     muse
     nwg-look
     pipewire
+    qalculate
     qt6ct
     quickshell
     ssh
     swaylock
     uwsm
     vesktop
+    zed
     zshrc
 )
 
@@ -33,18 +36,6 @@ configure_makepkg() {
     section "Configuring makepkg.conf"
     sed -i 's/ debug / !debug /g' /etc/makepkg.conf
     sed -i 's|^#BUILDDIR=/tmp/makepkg|BUILDDIR=/tmp/makepkg|g' /etc/makepkg.conf
-}
-
-install_aur_packages_as_user() {
-    section "Installing AUR packages"
-    runuser -u "$INSTALL_USER" -- bash -lc '
-        set -euo pipefail
-        command -v paru >/dev/null 2>&1 || {
-            printf "paru not found; expected it from the cachyos repo\n" >&2
-            exit 1
-        }
-        paru -S --noconfirm --needed tokyonight-gtk-theme-git hypr-kblayoutd-bin catppuccin-cursors-mocha
-    '
 }
 
 install_oh_my_zsh() {
@@ -62,32 +53,51 @@ install_oh_my_zsh() {
 
 prepare_user_ssh() {
     section "Preparing user SSH keys"
+    local user_home group ssh_dir
+    user_home=$(getent passwd "$INSTALL_USER" | cut -d: -f6)
+    group=$(id -gn "$INSTALL_USER")
+    [[ -n $user_home ]] || die "home directory not found for $INSTALL_USER"
+    ssh_dir="$user_home/.ssh"
     printf 'Plug in your YubiKey/security key for dotfiles SSH access, then press Enter.\n'
     read -r
-    runuser -u "$INSTALL_USER" -- bash -lc '
-        set -euo pipefail
-        mkdir -p ~/.ssh
-        chmod 700 ~/.ssh
-        ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null || true
-        chmod 644 ~/.ssh/known_hosts
-        cd ~/.ssh
-        ssh-keygen -K
-        rm -f ./*.pub 2>/dev/null || true
-        eval "$(ssh-agent -s)" >/dev/null
-        find . -maxdepth 1 -type f -name "*_sk*" -print0 | while IFS= read -r -d "" key; do
-            ssh-add "$key" 2>/dev/null || true
-        done
-    '
+    install -d -m700 -o "$INSTALL_USER" -g "$group" "$ssh_dir"
+    ssh-keyscan -H github.com >>"$ssh_dir/known_hosts" 2>/dev/null || true
+    chmod 644 "$ssh_dir/known_hosts"
+    # A new chroot user has no active seat ACL for the live ISO's FIDO device.
+    (
+        cd "$ssh_dir" || exit
+        if [[ ! -f id_ed25519_sk ]]; then
+            ssh-keygen -K
+            shopt -s nullglob
+            keys=()
+            for key in id_ed25519_sk_rk*; do
+                [[ $key == *.pub ]] || keys+=("$key")
+            done
+            ((${#keys[@]} == 1)) || {
+                printf "Expected one resident Ed25519 key; select a key as ~/.ssh/id_ed25519_sk before continuing\n" >&2
+                exit 1
+            }
+            cp -p "${keys[0]}" id_ed25519_sk
+            cp -p "${keys[0]}.pub" id_ed25519_sk.pub
+        fi
+        chmod 600 id_ed25519_sk
+    )
+    chown -R "$INSTALL_USER:$group" "$ssh_dir"
 }
 
 clone_dotfiles() {
     section "Cloning dotfiles"
-    runuser -u "$INSTALL_USER" -- bash -lc "
-        set -euo pipefail
-        if [[ ! -d '$DOTFILES_DIR/.git' ]]; then
-            git clone --branch '$DOTFILES_BRANCH' '$DOTFILES_REPO' '$DOTFILES_DIR'
-        fi
-    "
+    local user_home group ssh_command
+    user_home=$(getent passwd "$INSTALL_USER" | cut -d: -f6)
+    group=$(id -gn "$INSTALL_USER")
+    [[ -n $user_home ]] || die "home directory not found for $INSTALL_USER"
+    printf -v ssh_command '%q ' ssh -F /dev/null -o IdentityAgent=none -o IdentitiesOnly=yes \
+        -o "UserKnownHostsFile=$user_home/.ssh/known_hosts" -i "$user_home/.ssh/id_ed25519_sk"
+    if [[ ! -d $DOTFILES_DIR/.git ]]; then
+        # Sign as root while there is no logged-in target user to access FIDO.
+        GIT_SSH_COMMAND=$ssh_command git clone --branch "$DOTFILES_BRANCH" -- "$DOTFILES_REPO" "$DOTFILES_DIR"
+    fi
+    chown -R "$INSTALL_USER:$group" "$DOTFILES_DIR"
 }
 
 install_zsh_plugins() {
@@ -96,27 +106,29 @@ install_zsh_plugins() {
         set -euo pipefail
         ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
         mkdir -p "$ZSH_CUSTOM/plugins"
-        git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions.git "$ZSH_CUSTOM/plugins/zsh-autosuggestions" 2>/dev/null || true
-        git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting.git "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" 2>/dev/null || true
+        for plugin in zsh-autosuggestions zsh-syntax-highlighting; do
+            if [[ ! -d $ZSH_CUSTOM/plugins/$plugin/.git ]]; then
+                git clone --depth=1 "https://github.com/zsh-users/$plugin.git" "$ZSH_CUSTOM/plugins/$plugin"
+            fi
+        done
     '
 }
 
 stow_dotfiles() {
     section "Linking dotfiles"
-    local package_list
-    printf -v package_list '%q ' "${ARCH_STOW_PACKAGES[@]}"
-    runuser -u "$INSTALL_USER" -- bash -lc "
+    runuser -u "$INSTALL_USER" -- bash -lc '
         set -euo pipefail
-        cd '$DOTFILES_DIR'
+        cd "$1"
+        shift
+        for package in "$@"; do
+            [[ -d $package ]] || { printf "missing dotfiles package: %s\n" "$package" >&2; exit 1; }
+        done
         rm -f ~/.zshrc
         # keep stow folding at icons/default so app-installed icon dirs stay out of the repo
         mkdir -p ~/.local/share/icons
-        for package in $package_list; do
-            [[ -d \"\$package\" ]] || { printf 'missing dotfiles package: %s\\n' \"\$package\" >&2; exit 1; }
-            stow -D \"\$package\" 2>/dev/null || true
-            stow -v \"\$package\"
-        done
-    "
+        stow -n -v "$@"
+        stow -R -v "$@"
+    ' bash "$DOTFILES_DIR" "${ARCH_STOW_PACKAGES[@]}"
 }
 
 configure_default_browser() {
@@ -191,17 +203,16 @@ install_dotfiles_system_files() {
         update-ca-trust
     fi
 
-    mkdir -p /etc/tuigreet /usr/share/wayland-sessions /usr/local/bin
-    cp -r "$dot_dir/etc/greetd/." /etc/greetd/ 2>/dev/null || true
-    cp -r "$dot_dir/etc/tuigreet/." /etc/tuigreet/ 2>/dev/null || true
-    cp -r "$dot_dir/usr/share/wayland-sessions/." /usr/share/wayland-sessions/ 2>/dev/null || true
+    install -Dm644 "$dot_dir/etc/greetd/config.toml" /etc/greetd/config.toml
+    install -Dm644 "$dot_dir/etc/tuigreet/config.toml" /etc/tuigreet/config.toml
+    mkdir -p /usr/share/wayland-sessions /usr/local/bin
+    cp -r "$dot_dir/usr/share/wayland-sessions/." /usr/share/wayland-sessions/
 
     if [[ -f $dot_dir/usr/bin/hyprland-quiet ]]; then
         install -m 755 "$dot_dir/usr/bin/hyprland-quiet" /usr/local/bin/hyprland-quiet
     fi
 
-    chmod 644 /etc/greetd/config.toml /etc/tuigreet/config.toml 2>/dev/null || true
-    chmod 644 /usr/share/wayland-sessions/*.desktop 2>/dev/null || true
+    chmod 644 /usr/share/wayland-sessions/*.desktop
 }
 
 run_dotfiles_install() {
@@ -210,8 +221,6 @@ run_dotfiles_install() {
         return 0
     }
 
-    configure_makepkg
-    install_aur_packages_as_user
     install_oh_my_zsh
     prepare_user_ssh
     clone_dotfiles

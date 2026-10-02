@@ -27,12 +27,16 @@ render_boot_entry() {
     local title=$1
     local kernel=$2
     local root_partuuid=$3
+    local root_flags=''
+    if [[ ${ROOT_FS:-btrfs} == btrfs ]]; then
+        root_flags=' rootflags=subvol=@,compress=zstd:3,discard=async'
+    fi
 
     cat <<EOF
 title Arch Linux ($title)
 linux /vmlinuz-$kernel
 initrd /initramfs-$kernel.img
-options root=PARTUUID=$root_partuuid rw nvidia-drm.modeset=1 nvidia-drm.fbdev=1
+options root=PARTUUID=$root_partuuid rw$root_flags nvidia-drm.modeset=1 nvidia-drm.fbdev=1
 EOF
 }
 

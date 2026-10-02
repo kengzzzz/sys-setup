@@ -2,16 +2,26 @@
 
 patch_system_auth_file() {
     local file=$1
-
-    if ! grep -q 'pam_u2f.so.*authfile=/etc/Yubico/u2f_mappings' "$file"; then
-        if grep -q 'pam_systemd_home.so' "$file"; then
-            sed -i '/pam_systemd_home.so/a auth       [success=1 default=bad]     pam_u2f.so           authfile=/etc/Yubico/u2f_mappings cue pin=1' "$file"
-        else
-            sed -i '/pam_unix\.so/i auth       [success=1 default=bad]     pam_u2f.so           authfile=/etc/Yubico/u2f_mappings cue pin=1' "$file"
-        fi
+    local origin=${2:-pam://${HOSTNAME}} rendered
+    rendered=$(mktemp)
+    # Replace only the password authentication line. Account/password/session
+    # pam_systemd_home and pam_unix lines must not add extra authentication steps.
+    if ! awk -v origin="$origin" '
+        /^[[:space:]]*-?auth[[:space:]].*pam_u2f\.so.*authfile=\/etc\/Yubico\/u2f_mappings/ { next }
+        /^[[:space:]]*(#[[:space:]]*)?-?auth[[:space:]].*pam_unix\.so/ {
+            if (!inserted++) {
+                print "auth       [success=1 default=bad]     pam_u2f.so           authfile=/etc/Yubico/u2f_mappings cue pin=1 origin=" origin " appid=" origin
+            }
+            if ($0 !~ /^[[:space:]]*#/) printf "# "
+        }
+        { print }
+        END { if (!inserted) exit 1 }
+    ' "$file" >"$rendered"; then
+        rm -f "$rendered"
+        die "cannot locate pam_unix authentication in $file; PAM was left unchanged"
     fi
-
-    sed -i '/^[[:space:]]*-*auth[[:space:]].*pam_unix\.so/s/^/# /' "$file"
+    cat "$rendered" >"$file"
+    rm -f "$rendered"
 }
 
 enroll_yubikey_user() {
@@ -19,11 +29,8 @@ enroll_yubikey_user() {
 
     printf 'Enroll YubiKey for %s. Insert the key, provide PIN/touch when prompted, then press Enter.\n' "$user" >&2
     read -r
-    if [[ $user == root ]]; then
-        pamu2fcfg -N -u root
-    else
-        runuser -u "$user" -- pamu2fcfg -N -u "$user"
-    fi
+    # -u selects the mapping user; root can access FIDO without a seat session.
+    pamu2fcfg -N -u "$user" -o "pam://$HOSTNAME" -i "pam://$HOSTNAME"
 }
 
 configure_yubikey_system_auth() {
@@ -33,9 +40,21 @@ configure_yubikey_system_auth() {
     }
 
     section "Configuring YubiKey system authentication"
+    local mappings mapping user
+    mappings=$(mktemp)
+    for user in "$INSTALL_USER" root; do
+        if ! mapping=$(enroll_yubikey_user "$user"); then
+            rm -f "$mappings"
+            die "YubiKey enrollment failed for $user; PAM was left unchanged"
+        fi
+        [[ $mapping == "$user:"* && $mapping != *$'\n'* ]] || {
+            rm -f "$mappings"
+            die "invalid YubiKey mapping for $user; PAM was left unchanged"
+        }
+        printf '%s\n' "$mapping" >>"$mappings"
+    done
     mkdir -p /etc/Yubico
-    enroll_yubikey_user "$INSTALL_USER" >/etc/Yubico/u2f_mappings
-    enroll_yubikey_user root >>/etc/Yubico/u2f_mappings
-    chmod 0644 /etc/Yubico/u2f_mappings
-    patch_system_auth_file /etc/pam.d/system-auth
+    install -m0644 "$mappings" /etc/Yubico/u2f_mappings
+    rm -f "$mappings"
+    patch_system_auth_file /etc/pam.d/system-auth "pam://$HOSTNAME"
 }

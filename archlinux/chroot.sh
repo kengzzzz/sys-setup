@@ -17,13 +17,15 @@ source "$SCRIPT_DIR/lib/auth.sh"
 source "$SCRIPT_DIR/lib/boot.sh"
 # shellcheck source=lib/services.sh
 source "$SCRIPT_DIR/lib/services.sh"
+# shellcheck source=lib/snapshots.sh
+source "$SCRIPT_DIR/lib/snapshots.sh"
 # shellcheck source=install.env
 source "$SCRIPT_DIR/install.env"
 
 configure_pacman() {
     section "Configuring pacman"
     sed -i '/^#\[multilib\]/{s/^#//;n;s/^#//;}' /etc/pacman.conf
-    setup_cachyos_repo
+    pacman-key --populate archlinux cachyos
     sync_pacman
 }
 
@@ -66,6 +68,12 @@ create_user() {
 
 install_bootloader() {
     section "Installing systemd-boot"
+    mkinitcpio -P
+    local kernel
+    for kernel in "$PRIMARY_KERNEL" "$FALLBACK_KERNEL"; do
+        [[ -s /boot/vmlinuz-$kernel && -s /boot/initramfs-$kernel.img ]] \
+            || die "boot artifacts missing for $kernel"
+    done
     bootctl install
     mkdir -p /boot/loader/entries
     render_loader_config "$BOOT_ENTRY" >/boot/loader/loader.conf
@@ -88,13 +96,16 @@ main() {
     configure_mkinitcpio
     install_official_packages
     install_custom_kernel_packages
+    configure_container_runtime
     configure_sudoers
     enable_system_services
     create_user
     install_bootloader
     set_passwords
+    install_aur_packages_as_user
     run_dotfiles_install
     configure_yubikey_system_auth
+    configure_btrfs_snapshots
 }
 
 main "$@"

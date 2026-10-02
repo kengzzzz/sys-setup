@@ -9,7 +9,7 @@ set_default_config() {
     EXTRA_LOCALES=${EXTRA_LOCALES:-th_TH.UTF-8}
     KEYMAP=${KEYMAP:-us}
     EFI_SIZE=${EFI_SIZE:-5G}
-    ROOT_FS=${ROOT_FS:-xfs}
+    ROOT_FS=${ROOT_FS:-btrfs}
     PRIMARY_KERNEL=${PRIMARY_KERNEL:-linux-bore-flto-pgo}
     FALLBACK_KERNEL=${FALLBACK_KERNEL:-linux-cachyos-lts}
     FALLBACK_NVIDIA_PACKAGE=${FALLBACK_NVIDIA_PACKAGE:-linux-cachyos-lts-nvidia-open}
@@ -71,12 +71,27 @@ prompt_install_config() {
 validate_config() {
     [[ -n ${TARGET_DISK:-} ]] || die "target disk is required"
     [[ -b $TARGET_DISK ]] || die "target disk is not a block device: $TARGET_DISK"
-    [[ $ROOT_FS == xfs ]] || die "only xfs root filesystem is currently implemented"
+    [[ $INSTALL_USER =~ ^[a-z_][a-z0-9_-]*$ && $INSTALL_USER != root ]] || die "invalid install user: $INSTALL_USER"
+    [[ $HOSTNAME =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] || die "invalid hostname: $HOSTNAME"
+    [[ $TIMEZONE != /* && $TIMEZONE != *..* && -f /usr/share/zoneinfo/$TIMEZONE ]] || die "invalid timezone: $TIMEZONE"
+    [[ $EFI_SIZE =~ ^[1-9][0-9]*[KkMmGgTt]$ ]] || die "EFI size must include a unit, for example 5G: $EFI_SIZE"
+    [[ $ROOT_FS == btrfs || $ROOT_FS == xfs ]] || die "root filesystem must be btrfs or xfs"
     [[ -d /sys/firmware/efi ]] || die "UEFI firmware is required for systemd-boot"
     [[ -n $PRIMARY_KERNEL && -n $FALLBACK_KERNEL ]] || die "primary and fallback kernels are required"
+    local kernel flag
+    for kernel in "$PRIMARY_KERNEL" "$FALLBACK_KERNEL" "$FALLBACK_NVIDIA_PACKAGE"; do
+        [[ $kernel =~ ^[a-z0-9][a-z0-9._+-]*$ ]] || die "invalid kernel package name: $kernel"
+    done
+    [[ $PRIMARY_KERNEL != "$FALLBACK_KERNEL" ]] || die "primary and fallback kernels must be different"
+    for flag in ENABLE_DOTFILES ENABLE_WORKLOAD_PACKAGES RESTORE_LACT_CONFIG YUBIKEY_SYSTEM_AUTH CUSTOM_KERNEL_BUILD; do
+        [[ ${!flag} == 0 || ${!flag} == 1 ]] || die "$flag must be 0 or 1"
+    done
+    [[ $RESTORE_LACT_CONFIG != 1 || $ENABLE_DOTFILES == 1 ]] || die "LACT config restoration requires dotfiles installation"
     [[ $BOOT_ENTRY =~ ^[A-Za-z0-9._+-]+\.conf$ ]] || die "boot entry must be a simple .conf filename: $BOOT_ENTRY"
     [[ $BOOT_ENTRY != "${FALLBACK_KERNEL}.conf" ]] || die "primary and fallback boot entries must use different filenames"
     [[ -n $NETWORK_INTERFACE && -n $NETWORK_ADDRESS && -n $NETWORK_GATEWAY && -n $NETWORK_DNS ]] || die "static network values are required"
+    [[ $NETWORK_INTERFACE =~ ^[A-Za-z0-9_.-]+$ ]] || die "invalid network interface: $NETWORK_INTERFACE"
+    validate_target_disk
     if secure_boot_enabled; then
         die "Secure Boot must be disabled before installation; this installer does not enroll or sign Secure Boot keys"
     fi
@@ -87,6 +102,12 @@ show_install_plan() {
     printf 'Disk:              %s\n' "$TARGET_DISK"
     printf 'EFI size:          %s\n' "$EFI_SIZE"
     printf 'Root filesystem:   %s\n' "$ROOT_FS"
+    if [[ $ROOT_FS == btrfs ]]; then
+        printf 'Recovery:          Snapper root snapshots with matching EFI files\n'
+        printf 'SSD TRIM:          asynchronous discard\n'
+    else
+        printf 'SSD TRIM:          weekly fstrim.timer\n'
+    fi
     printf 'User:              %s\n' "$INSTALL_USER"
     printf 'Hostname:          %s\n' "$HOSTNAME"
     printf 'Timezone:          %s\n' "$TIMEZONE"
@@ -112,6 +133,7 @@ write_chroot_env() {
     write_kv "$env_file" LOCALE "$LOCALE"
     write_kv "$env_file" EXTRA_LOCALES "$EXTRA_LOCALES"
     write_kv "$env_file" KEYMAP "$KEYMAP"
+    write_kv "$env_file" ROOT_FS "$ROOT_FS"
     write_kv "$env_file" PRIMARY_KERNEL "$PRIMARY_KERNEL"
     write_kv "$env_file" FALLBACK_KERNEL "$FALLBACK_KERNEL"
     write_kv "$env_file" FALLBACK_NVIDIA_PACKAGE "$FALLBACK_NVIDIA_PACKAGE"

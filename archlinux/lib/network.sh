@@ -25,7 +25,6 @@ EOF
 
 configure_static_network() {
     local output=${1:-/etc/NetworkManager/system-connections/static-${NETWORK_INTERFACE}.nmconnection}
-    local resolv_conf=${2:-/etc/resolv.conf}
     local rendered
 
     section "Configuring NetworkManager"
@@ -33,5 +32,9 @@ configure_static_network() {
     render_static_network "$NETWORK_INTERFACE" "$NETWORK_ADDRESS" "$NETWORK_GATEWAY" "$NETWORK_DNS" >"$rendered"
     install -Dm600 "$rendered" "$output"
     rm -f "$rendered"
-    ln -sfn /run/systemd/resolve/resolv.conf "$resolv_conf"
+}
+
+configure_resolver_link() {
+    # arch-chroot bind-mounts resolv.conf. Replace it only after chroot exits.
+    ln -sfn /run/systemd/resolve/resolv.conf "${1:-/mnt/etc/resolv.conf}"
 }

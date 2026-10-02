@@ -3,7 +3,7 @@ set -euo pipefail
 
 echo "Bootstrap Arch Linux installer..."
 
-pacman -Sy --noconfirm --needed git curl arch-install-scripts gptfdisk dosfstools xfsprogs parted docker docker-compose
+pacman -Syu --noconfirm --needed git curl arch-install-scripts gptfdisk dosfstools btrfs-progs xfsprogs parted docker docker-compose
 
 INSTALLER_REPO="https://github.com/kengzzzz/sys-setup.git"
 BRANCH="main"

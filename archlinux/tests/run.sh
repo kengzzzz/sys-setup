@@ -60,7 +60,22 @@ expected_boot='title Arch Linux (linux-bore-flto-pgo)
 linux /vmlinuz-linux-bore-flto-pgo
 initrd /initramfs-linux-bore-flto-pgo.img
 options root=PARTUUID=abc-123 rw nvidia-drm.modeset=1 nvidia-drm.fbdev=1'
+ROOT_FS=xfs
 assert_eq "$expected_boot" "$(render_boot_entry linux-bore-flto-pgo linux-bore-flto-pgo abc-123)" "boot entry rendering"
+ROOT_FS=btrfs
+btrfs_boot=$(render_boot_entry linux-bore-flto-pgo linux-bore-flto-pgo abc-123)
+[[ $btrfs_boot == *'rootflags=subvol=@,compress=zstd:3,discard=async'* ]] || {
+    printf 'FAIL: Btrfs boot entry must mount @ with asynchronous TRIM\n' >&2
+    exit 1
+}
+[[ $btrfs_boot != *subvolid=* ]] || {
+    printf 'FAIL: root must remain bootable when rollback changes its subvolume ID\n' >&2
+    exit 1
+}
+assert_eq $'btrfs-progs\nsnapper\nsnap-pac\nrsync' "$(filesystem_packages)" "Btrfs recovery packages"
+ROOT_FS=xfs
+assert_eq xfsprogs "$(filesystem_packages)" "XFS filesystem package"
+ROOT_FS=btrfs
 
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
@@ -68,17 +83,28 @@ NETWORK_INTERFACE=enp14s0
 NETWORK_ADDRESS=192.168.0.10/24
 NETWORK_GATEWAY=192.168.0.1
 NETWORK_DNS=192.168.0.3
-configure_static_network "$tmpdir/static-enp14s0.nmconnection" "$tmpdir/resolv.conf" >/dev/null
+configure_static_network "$tmpdir/static-enp14s0.nmconnection" >/dev/null
 assert_eq "600" "$(stat -c %a "$tmpdir/static-enp14s0.nmconnection")" "NetworkManager keyfile mode"
+configure_resolver_link "$tmpdir/resolv.conf"
 assert_eq "/run/systemd/resolve/resolv.conf" "$(readlink "$tmpdir/resolv.conf")" "resolved resolv.conf link"
 
 cat >"$tmpdir/system-auth" <<'EOF'
 auth       required                    pam_faillock.so      preauth
 -auth      [success=2 default=ignore]  pam_systemd_home.so
 -auth      [success=1 default=bad]     pam_unix.so          try_first_pass nullok
+-account   [success=1 default=ignore]  pam_systemd_home.so
 account    required                    pam_unix.so
+-password  [success=1 default=ignore]  pam_systemd_home.so
+password   required                    pam_unix.so
+-session   optional                    pam_systemd_home.so
+session    required                    pam_unix.so
 EOF
-patch_system_auth_file "$tmpdir/system-auth"
+patch_system_auth_file "$tmpdir/system-auth" pam://installed-host
+assert_eq "1" "$(grep -c '^auth.*pam_u2f' "$tmpdir/system-auth")" "one U2F authentication step in the complete PAM stack"
+grep -q 'origin=pam://installed-host appid=pam://installed-host' "$tmpdir/system-auth"
+cp "$tmpdir/system-auth" "$tmpdir/system-auth-once"
+patch_system_auth_file "$tmpdir/system-auth" pam://installed-host
+cmp "$tmpdir/system-auth-once" "$tmpdir/system-auth"
 grep -q 'pam_u2f.so           authfile=/etc/Yubico/u2f_mappings cue pin=1' "$tmpdir/system-auth" || {
     printf 'FAIL: system-auth missing pam_u2f line\n' >&2
     exit 1
@@ -95,7 +121,7 @@ for pkg in networkmanager quickshell hypridle uwsm brave-origin-bin lact fzf pkg
         exit 1
     fi
 done
-for pkg in systemd-networkd waybar swaync rofi swayidle helium-browser-bin kolourpaint sbctl sbsigntools python-pywal vesktop vscodium; do
+for pkg in systemd-networkd waybar swaync rofi swayidle helium-browser-bin kolourpaint python-pywal vesktop vesktop-bin vscodium btop mate-polkit gpu-screen-recorder-ui; do
     if printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx "$pkg"; then
         printf 'FAIL: stale package %s should not be in official package list\n' "$pkg" >&2
         exit 1
@@ -112,19 +138,21 @@ if printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx 'firefox'; then
     exit 1
 fi
 
-if printf '%s\n' "${BASE_PACKAGES[@]}" | grep -qx 'base-devel'; then
-    printf 'FAIL: base-devel should not be in base package list (no host toolchain)\n' >&2
-    exit 1
-fi
-for pkg in fakeroot binutils sudo; do
+for pkg in base-devel sudo cachyos-keyring cachyos-mirrorlist; do
     if ! printf '%s\n' "${BASE_PACKAGES[@]}" | grep -qx "$pkg"; then
-        printf 'FAIL: %s must stay in base package list; makepkg breaks without it\n' "$pkg" >&2
+        printf 'FAIL: required base package %s is missing\n' "$pkg" >&2
         exit 1
     fi
 done
-for pkg in cmake gcc clang rust; do
-    if printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx "$pkg"; then
-        printf 'FAIL: %s should not be in official package list (no host toolchain)\n' "$pkg" >&2
+for pkg in cmake clang cava claude-code ddcutil hyprsunset mission-center wine ttf-cascadia-code ttf-material-symbols-variable; do
+    if ! printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx "$pkg"; then
+        printf 'FAIL: installed package %s should be in the repo package list\n' "$pkg" >&2
+        exit 1
+    fi
+done
+for pkg in broadcast-linux-bin tiny-poe2smoother-bin python-pywal vesktop; do
+    if ! printf '%s\n' "${AUR_PACKAGES[@]}" | grep -qx "$pkg"; then
+        printf 'FAIL: installed foreign package %s should be in the AUR package list\n' "$pkg" >&2
         exit 1
     fi
 done
@@ -140,14 +168,20 @@ if ! printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx 'paru'; then
 fi
 
 PRIMARY_KERNEL=linux-bore-flto-pgo
+make_kernel_fixture() {
+    local output=$1 name=$2 version=$3
+    mkdir -p "$tmpdir/metadata"
+    printf 'pkgname = %s\npkgver = %s\narch = x86_64\n' "$name" "$version" >"$tmpdir/metadata/.PKGINFO"
+    tar --zstd -cf "$output" -C "$tmpdir/metadata" .PKGINFO
+}
 mkdir -p "$tmpdir/kernel-only" "$tmpdir/nvidia-only" "$tmpdir/packages"
-touch "$tmpdir/kernel-only/linux-bore-flto-pgo-1-1-x86_64.pkg.tar.zst"
+make_kernel_fixture "$tmpdir/kernel-only/linux-bore-flto-pgo-1-1-x86_64.pkg.tar.zst" "$PRIMARY_KERNEL" 1-1
 CUSTOM_KERNEL_PACKAGES_DIR="$tmpdir/kernel-only"
 if (validate_custom_kernel_packages) >/dev/null 2>&1; then
     printf 'FAIL: custom kernel validation accepted a missing NVIDIA package\n' >&2
     exit 1
 fi
-touch "$tmpdir/nvidia-only/linux-bore-flto-pgo-nvidia-open-1-1-x86_64.pkg.tar.zst"
+make_kernel_fixture "$tmpdir/nvidia-only/linux-bore-flto-pgo-nvidia-open-1-1-x86_64.pkg.tar.zst" "${PRIMARY_KERNEL}-nvidia-open" 1-1
 CUSTOM_KERNEL_PACKAGES_DIR="$tmpdir/nvidia-only"
 if (validate_custom_kernel_packages) >/dev/null 2>&1; then
     printf 'FAIL: custom kernel validation accepted a missing kernel package\n' >&2
@@ -155,10 +189,9 @@ if (validate_custom_kernel_packages) >/dev/null 2>&1; then
 fi
 
 CUSTOM_KERNEL_PACKAGES_DIR="$tmpdir/packages"
-touch "$CUSTOM_KERNEL_PACKAGES_DIR/linux-bore-flto-pgo-1-1-x86_64.pkg.tar.zst" \
-    "$CUSTOM_KERNEL_PACKAGES_DIR/linux-bore-flto-pgo-headers-1-1-x86_64.pkg.tar.zst" \
-    "$CUSTOM_KERNEL_PACKAGES_DIR/linux-bore-flto-pgo-dbg-1-1-x86_64.pkg.tar.zst" \
-    "$CUSTOM_KERNEL_PACKAGES_DIR/linux-bore-flto-pgo-nvidia-open-1-1-x86_64.pkg.tar.zst"
+cp "$tmpdir/kernel-only/"*.pkg.tar.zst "$tmpdir/nvidia-only/"*.pkg.tar.zst "$CUSTOM_KERNEL_PACKAGES_DIR/"
+touch "$CUSTOM_KERNEL_PACKAGES_DIR/linux-bore-flto-pgo-headers-1-1-x86_64.pkg.tar.zst" \
+    "$CUSTOM_KERNEL_PACKAGES_DIR/linux-bore-flto-pgo-dbg-1-1-x86_64.pkg.tar.zst"
 validate_custom_kernel_packages
 assert_eq "2" "${#CUSTOM_KERNEL_PACKAGES[@]}" "kernel package glob excludes headers and dbg"
 if printf '%s\n' "${CUSTOM_KERNEL_PACKAGES[@]}" | grep -q -- '-headers-\|-dbg-'; then
@@ -166,7 +199,6 @@ if printf '%s\n' "${CUSTOM_KERNEL_PACKAGES[@]}" | grep -q -- '-headers-\|-dbg-';
     exit 1
 fi
 
-# Multiple versions must not be passed together to pacman.
 touch "$CUSTOM_KERNEL_PACKAGES_DIR/linux-bore-flto-pgo-2-1-x86_64.pkg.tar.zst"
 if (validate_custom_kernel_packages) >/dev/null 2>&1; then
     printf 'FAIL: custom kernel validation accepted multiple kernel versions\n' >&2
@@ -178,9 +210,21 @@ if (validate_custom_kernel_packages) >/dev/null 2>&1; then
     printf 'FAIL: custom kernel validation accepted multiple NVIDIA versions\n' >&2
     exit 1
 fi
+rm "$CUSTOM_KERNEL_PACKAGES_DIR/linux-bore-flto-pgo-nvidia-open-2-1-x86_64.pkg.tar.zst"
+make_kernel_fixture "$CUSTOM_KERNEL_PACKAGES_DIR/linux-bore-flto-pgo-nvidia-open-1-1-x86_64.pkg.tar.zst" "${PRIMARY_KERNEL}-nvidia-open" 2-1
+if (validate_custom_kernel_packages) >/dev/null 2>&1; then
+    printf 'FAIL: custom kernel validation accepted mismatched package metadata versions\n' >&2
+    exit 1
+fi
+make_kernel_fixture "$CUSTOM_KERNEL_PACKAGES_DIR/linux-bore-flto-pgo-nvidia-open-1-1-x86_64.pkg.tar.zst" "${PRIMARY_KERNEL}-nvidia-open" 1-1
+printf 'invalid archive' >"$CUSTOM_KERNEL_PACKAGES_DIR/linux-bore-flto-pgo-nvidia-open-1-1-x86_64.pkg.tar.zst"
+if (validate_custom_kernel_packages) >/dev/null 2>&1; then
+    printf 'FAIL: custom kernel validation accepted a corrupt archive\n' >&2
+    exit 1
+fi
+make_kernel_fixture "$CUSTOM_KERNEL_PACKAGES_DIR/linux-bore-flto-pgo-nvidia-open-1-1-x86_64.pkg.tar.zst" "${PRIMARY_KERNEL}-nvidia-open" 1-1
 
 (
-    # Exercise defaults and build output derivation without host operations.
     # shellcheck source=../lib/config.sh
     source "$ROOT_DIR/lib/config.sh"
     unset CUSTOM_KERNEL_DIR CUSTOM_KERNEL_PACKAGES_DIR
@@ -200,13 +244,13 @@ fi
     assert_eq "$tmpdir/packages" "$CUSTOM_KERNEL_PACKAGES_DIR" "package override preserved"
 )
 
-for package in docs swayidle xsettingsd etc usr utils; do
+for package in docs swayidle xsettingsd etc usr utils gpu-screen-recorder btop; do
     if printf '%s\n' "${ARCH_STOW_PACKAGES[@]}" | grep -qx "$package"; then
         printf 'FAIL: %s should not be in the Arch Stow allowlist\n' "$package" >&2
         exit 1
     fi
 done
-for package in hypr quickshell uwsm zshrc; do
+for package in hypr quickshell uwsm zshrc broadcast-linux claude hypr-kblayoutd qalculate zed; do
     if ! printf '%s\n' "${ARCH_STOW_PACKAGES[@]}" | grep -qx "$package"; then
         printf 'FAIL: %s should be in the Arch Stow allowlist\n' "$package" >&2
         exit 1

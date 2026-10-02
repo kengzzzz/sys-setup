@@ -9,14 +9,25 @@ SYSTEM_SERVICES=(
     tailscaled.service
     docker.socket
     lactd.service
-    fstrim.timer
-    xfs_scrub_all.timer
     accounts-daemon.service
 )
 
 enable_system_services() {
     section "Enabling services"
-    systemctl enable "${SYSTEM_SERVICES[@]}"
+    local services=("${SYSTEM_SERVICES[@]}")
+    if [[ ${ROOT_FS:-btrfs} == btrfs ]]; then
+        systemctl disable fstrim.timer
+        services+=(snapper-cleanup.timer btrfs-scrub@-.timer)
+    else
+        services+=(fstrim.timer xfs_scrub_all.timer)
+    fi
+    systemctl enable "${services[@]}"
+}
+
+configure_container_runtime() {
+    [[ ${ENABLE_WORKLOAD_PACKAGES:-1} == 1 ]] || return 0
+    section "Configuring NVIDIA Docker runtime"
+    nvidia-ctk runtime configure --runtime=docker
 }
 
 link_user_unit() {
@@ -33,21 +44,24 @@ link_user_unit() {
 
 enable_target_user_services() {
     section "Enabling user services"
-    local user_home group ssh_wants keyboard_wants
+    local user_home group ssh_wants keyboard_wants broadcast_wants
     user_home=$(getent passwd "$INSTALL_USER" | cut -d: -f6)
     group=$(id -gn "$INSTALL_USER")
     [[ -n $user_home ]] || die "home directory not found for $INSTALL_USER"
 
     ssh_wants="$user_home/.config/systemd/user/sockets.target.wants"
     keyboard_wants="$user_home/.config/systemd/user/graphical-session.target.wants"
+    broadcast_wants="$user_home/.config/systemd/user/default.target.wants"
     install -d -o "$INSTALL_USER" -g "$group" \
         "$user_home/.config" \
         "$user_home/.config/systemd" \
         "$user_home/.config/systemd/user" \
         "$ssh_wants" \
-        "$keyboard_wants"
+        "$keyboard_wants" \
+        "$broadcast_wants"
     link_user_unit "$user_home" ssh-agent.socket sockets.target
     link_user_unit "$user_home" hypr-kblayoutd.service graphical-session.target
+    link_user_unit "$user_home" broadcast-linux.service default.target
     chown -h "$INSTALL_USER:$group" "$ssh_wants/ssh-agent.socket" \
-        "$keyboard_wants/hypr-kblayoutd.service"
+        "$keyboard_wants/hypr-kblayoutd.service" "$broadcast_wants/broadcast-linux.service"
 }
