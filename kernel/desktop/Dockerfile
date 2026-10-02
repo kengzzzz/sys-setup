@@ -55,3 +55,10 @@ RUN pacman -Syyu --noconfirm --needed \
     perf zstd tar bash llvm binutils python binutils python
 
 WORKDIR /build
+
+FROM cachyos-base AS autofdo-load
+
+RUN pacman -Syyu --noconfirm --needed stress-ng && \
+    pacman -Scc --noconfirm
+
+WORKDIR /load

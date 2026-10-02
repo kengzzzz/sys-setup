@@ -64,3 +64,31 @@ services:
       - ./profiles:/profiles
       - ./out:/out:ro
     command: [bash, /scripts/generate-autofdo-profile.sh]
+
+  autofdo-load:
+    build:
+      context: ..
+      dockerfile: desktop/Dockerfile
+      target: autofdo-load
+      args: *build-args
+    image: desktop-autofdo-load
+    cpus: ${AUTOFDO_LOAD_CPUS:-4}
+    volumes:
+      - ./out/autofdo-load:/load
+    command:
+      - nice
+      - -n19
+      - stress-ng
+      - --temp-path=/load
+      - --timeout=${AUTOFDO_LOAD_SECONDS:-1860}
+      - --metrics-brief
+      - --hdd=1
+      - --hdd-bytes=1G
+      - --hdd-opts=wr-seq,rd-rnd,fsync
+      - --iomix=1
+      - --dentry=1
+      - --mmap=1
+      - --fork=1
+      - --sock=1
+      - --udp=1
+      - --epoll=1

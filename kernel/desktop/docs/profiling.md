@@ -13,6 +13,20 @@ the running kernel, records 30 minutes of your normal workload, and replaces
 `profiles/kernel.afdo`. Back up profiles you want to keep, then rebuild the final
 kernel. If you change perf sysctls temporarily, restore their original values.
 
+Optional background load (disk, page cache, fork, loopback sockets) to run
+alongside gaming/video during collection:
+
+```sh
+docker compose build autofdo-load autofdo
+docker compose up -d autofdo-load
+docker compose run --rm autofdo
+docker compose down
+```
+
+It is capped by `AUTOFDO_LOAD_CPUS` (default 4) so it doesn't dominate the
+profile, and stops after `AUTOFDO_LOAD_SECONDS` (default 1860). Temp files go
+to `out/autofdo-load/` and are removed on exit.
+
 ## Propeller
 
 In `.env`, set `COMPOSE_FILE=compose.yaml:compose.propeller.yaml` and uncomment

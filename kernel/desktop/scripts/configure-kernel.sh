@@ -54,7 +54,7 @@ expect DEFAULT_HOSTNAME ''
 keep=(DRM DRM_KMS_HELPER DRM_SIMPLEDRM DRM_TTM DRM_TTM_HELPER
       DRM_DISPLAY_HELPER DRM_DISPLAY_HDCP_HELPER
       KVM_AMD SND_HDA_INTEL SND_USB_AUDIO
-      R8169 NVME_CORE USB_XHCI_HCD USB4 XFS_FS)
+      R8169 NVME_CORE USB_XHCI_HCD USB4 XFS_FS BTRFS_FS)
 for symbol in "${keep[@]}"; do
     previous=$(scripts/config --file "$before" --state "$symbol")
     current=$(scripts/config --state "$symbol")
