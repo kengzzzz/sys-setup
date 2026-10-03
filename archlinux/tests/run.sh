@@ -115,13 +115,14 @@ grep -q '^# -auth      \[success=1 default=bad\]     pam_unix.so' "$tmpdir/syste
 }
 
 for pkg in networkmanager quickshell hypridle uwsm brave-origin-bin lact fzf pkgfile \
-    ripgrep fwupd yubikey-manager wlr-randr pipewire-jack openai-codex zenity zed; do
+    ripgrep fwupd yubikey-manager wlr-randr pipewire-jack openai-codex zenity zed \
+    rsync dconf wl-clipboard xdg-utils which; do
     if ! printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx "$pkg"; then
         printf 'FAIL: %s should be in official package list\n' "$pkg" >&2
         exit 1
     fi
 done
-for pkg in systemd-networkd waybar swaync rofi swayidle helium-browser-bin kolourpaint python-pywal vesktop vesktop-bin vscodium btop mate-polkit gpu-screen-recorder-ui; do
+for pkg in systemd-networkd waybar swaync rofi swayidle swaylock helium-browser-bin kolourpaint python-pywal vesktop vesktop-bin vscodium btop mate-polkit gpu-screen-recorder-ui; do
     if printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx "$pkg"; then
         printf 'FAIL: stale package %s should not be in official package list\n' "$pkg" >&2
         exit 1
@@ -244,13 +245,13 @@ make_kernel_fixture "$CUSTOM_KERNEL_PACKAGES_DIR/linux-bore-flto-pgo-nvidia-open
     assert_eq "$tmpdir/packages" "$CUSTOM_KERNEL_PACKAGES_DIR" "package override preserved"
 )
 
-for package in docs swayidle xsettingsd etc usr utils gpu-screen-recorder btop; do
+for package in docs applications swayidle swaylock xsettingsd etc usr utils gpu-screen-recorder btop; do
     if printf '%s\n' "${ARCH_STOW_PACKAGES[@]}" | grep -qx "$package"; then
         printf 'FAIL: %s should not be in the Arch Stow allowlist\n' "$package" >&2
         exit 1
     fi
 done
-for package in hypr quickshell uwsm zshrc broadcast-linux claude hypr-kblayoutd qalculate zed; do
+for package in hypr quickshell uwsm zshrc broadcast-linux claude hypr-kblayoutd qalculate zed mpv; do
     if ! printf '%s\n' "${ARCH_STOW_PACKAGES[@]}" | grep -qx "$package"; then
         printf 'FAIL: %s should be in the Arch Stow allowlist\n' "$package" >&2
         exit 1

@@ -18,6 +18,10 @@ See [recovery](archlinux/RECOVERY.md).
 From a local checkout, use `bash archlinux/install.sh --dry-run` to preview the
 installation, or `--help` for options.
 
+Extra desktop preferences live in the private `workstation` Stow package. After
+changing GUI preferences, run `python archlinux/scripts/workstation-preferences.py save`.
+The installer applies saved dconf and history-free Qalculate preferences automatically.
+
 ## WSL2 + Debian
 
 Run in elevated PowerShell:

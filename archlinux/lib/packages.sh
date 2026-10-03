@@ -17,7 +17,7 @@ BASE_PACKAGES=(
 
 OFFICIAL_PACKAGES=(
     gnu-free-fonts noto-fonts noto-fonts-cjk noto-fonts-emoji noto-fonts-extra
-    greetd greetd-tuigreet hyprland swaybg swaylock swayimg hypridle hyprsunset
+    greetd greetd-tuigreet hyprland swaybg swayimg hypridle hyprsunset
     quickshell uwsm xdg-desktop-portal-hyprland xdg-desktop-portal-gtk gnome-keyring seahorse
     qt5ct qt6ct papirus-icon-theme thunar gvfs tumbler kitty cliphist grim slurp swappy hyprpicker
     pipewire pipewire-pulse pipewire-jack wireplumber pavucontrol blueman brave-origin-bin mpv playerctl qalculate-gtk
@@ -31,6 +31,7 @@ OFFICIAL_PACKAGES=(
     networkmanager lact fwupd yubikey-manager wlr-randr openai-codex zenity
     cava claude-code ddcutil mission-center wine clang cmake
     edk2-shell sbctl sbsigntools
+    rsync dconf wl-clipboard xdg-utils which
 )
 
 AUR_PACKAGES=(

@@ -61,7 +61,9 @@ enable_target_user_services() {
         "$broadcast_wants"
     link_user_unit "$user_home" ssh-agent.socket sockets.target
     link_user_unit "$user_home" hypr-kblayoutd.service graphical-session.target
+    link_user_unit "$user_home" hyprsunset.service graphical-session.target
     link_user_unit "$user_home" broadcast-linux.service default.target
     chown -h "$INSTALL_USER:$group" "$ssh_wants/ssh-agent.socket" \
         "$keyboard_wants/hypr-kblayoutd.service" "$broadcast_wants/broadcast-linux.service"
+    chown -h "$INSTALL_USER:$group" "$keyboard_wants/hyprsunset.service"
 }

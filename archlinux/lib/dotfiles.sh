@@ -2,7 +2,6 @@
 
 ARCH_STOW_PACKAGES=(
     Thunar
-    applications
     autostart
     broadcast-linux
     claude
@@ -16,6 +15,7 @@ ARCH_STOW_PACKAGES=(
     hypr-kblayoutd
     icons
     kitty
+    mpv
     muse
     nwg-look
     pipewire
@@ -23,7 +23,6 @@ ARCH_STOW_PACKAGES=(
     qt6ct
     quickshell
     ssh
-    swaylock
     uwsm
     vesktop
     zed
@@ -125,9 +124,15 @@ stow_dotfiles() {
         done
         rm -f ~/.zshrc
         # keep stow folding at icons/default so app-installed icon dirs stay out of the repo
-        mkdir -p ~/.local/share/icons
+        mkdir -p ~/.local/share/icons ~/.config/qalculate
         stow -n -v "$@"
         stow -R -v "$@"
+        # Extra plain preferences use file links so newly generated files stay
+        # in HOME, outside Git. Older dotfiles checkouts may lack this package.
+        if [[ -d workstation ]]; then
+            stow -n -v --no-folding workstation
+            stow -R -v --no-folding workstation
+        fi
     ' bash "$DOTFILES_DIR" "${ARCH_STOW_PACKAGES[@]}"
 }
 
@@ -144,6 +149,17 @@ configure_default_browser() {
             x-scheme-handler/about \
             x-scheme-handler/unknown
     '
+}
+
+apply_workstation_preferences() {
+    [[ -f $DOTFILES_DIR/workstation/.config/workstation/dconf.ini ]] || return 0
+    section "Applying desktop preferences from private dotfiles"
+    local user_home
+    user_home=$(getent passwd "$INSTALL_USER" | cut -d: -f6)
+    [[ -n $user_home ]] || die "home directory not found for $INSTALL_USER"
+    runuser -u "$INSTALL_USER" -- env HOME="$user_home" XDG_CONFIG_HOME="$user_home/.config" \
+        dbus-run-session -- python "$SCRIPT_DIR/scripts/workstation-preferences.py" \
+        apply --home "$user_home" --dotfiles "$DOTFILES_DIR"
 }
 
 validate_lact_hardware() {
@@ -230,4 +246,5 @@ run_dotfiles_install() {
     install_dotfiles_system_files
     restore_lact_config
     enable_target_user_services
+    apply_workstation_preferences
 }
