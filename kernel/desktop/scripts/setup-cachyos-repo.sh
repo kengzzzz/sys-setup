@@ -32,12 +32,21 @@ verify_key_asset() (
 )
 
 detect_repo_flavor() {
-  local native_march
+  local native_march cpu_family
 
   native_march="$(gcc -march=native -Q --help=target 2>/dev/null | awk '$1 == "-march=" { print $2; exit }')"
   if [[ "${native_march}" =~ ^znver[45]$ ]]; then
     printf 'znver4\n'
     return
+  fi
+
+  # The Arch ISO has no gcc. Zen 4 is family 25 with AVX-512; Zen 5 is family 26.
+  if [[ -z "${native_march}" ]] && grep -q '^vendor_id[[:space:]]*: AuthenticAMD' /proc/cpuinfo; then
+    cpu_family="$(awk -F': ' '/^cpu family/ { print $2; exit }' /proc/cpuinfo)"
+    if [[ "${cpu_family}" == 26 ]] || { [[ "${cpu_family}" == 25 ]] && grep -qw avx512f /proc/cpuinfo; }; then
+      printf 'znver4\n'
+      return
+    fi
   fi
 
   if /lib/ld-linux-x86-64.so.2 --help | grep -q 'x86-64-v4 (supported, searched)'; then
