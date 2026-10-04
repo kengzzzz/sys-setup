@@ -28,7 +28,7 @@ OFFICIAL_PACKAGES=(
     pacman-contrib cachyos-settings socat steam stow tailscale docker-compose
     paru
     docker-buildx accountsservice python-dbus zed nwg-look pam-u2f
-    networkmanager lact fwupd yubikey-manager wlr-randr openai-codex zenity
+    networkmanager lact fwupd yubikey-manager yubikey-touch-detector wlr-randr openai-codex zenity
     cava claude-code ddcutil mission-center wine clang cmake
     edk2-shell sbctl sbsigntools
     rsync dconf wl-clipboard xdg-utils which

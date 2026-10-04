@@ -9,6 +9,7 @@ ARCH_STOW_PACKAGES=(
     desktop
     fastfetch
     fontconfig
+    gnupg
     gtk-3.0
     gtk-4.0
     hypr
@@ -125,6 +126,7 @@ stow_dotfiles() {
         rm -f ~/.zshrc
         # keep stow folding at icons/default so app-installed icon dirs stay out of the repo
         mkdir -p ~/.local/share/icons ~/.config/qalculate
+        install -d -m 700 ~/.gnupg
         stow -n -v "$@"
         stow -R -v "$@"
         # Extra plain preferences use file links so newly generated files stay
