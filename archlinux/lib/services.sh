@@ -10,6 +10,7 @@ SYSTEM_SERVICES=(
     docker.socket
     lactd.service
     accounts-daemon.service
+    systemd-timesyncd.service
 )
 
 enable_system_services() {

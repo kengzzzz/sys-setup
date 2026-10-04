@@ -154,12 +154,17 @@ configure_default_browser() {
 apply_workstation_preferences() {
     [[ -f $DOTFILES_DIR/workstation/.config/workstation/dconf.ini ]] || return 0
     section "Applying desktop preferences from private dotfiles"
-    local user_home
+    local user_home script_dir
     user_home=$(getent passwd "$INSTALL_USER" | cut -d: -f6)
     [[ -n $user_home ]] || die "home directory not found for $INSTALL_USER"
-    runuser -u "$INSTALL_USER" -- env HOME="$user_home" XDG_CONFIG_HOME="$user_home/.config" \
-        dbus-run-session -- python "$SCRIPT_DIR/scripts/workstation-preferences.py" \
+    # The installer lives under /root, which the target user cannot traverse.
+    script_dir=$(mktemp -d)
+    chmod 755 "$script_dir"
+    install -m644 "$SCRIPT_DIR/scripts/workstation-preferences.py" "$script_dir/"
+    runuser -u "$INSTALL_USER" -- env -u XDG_RUNTIME_DIR HOME="$user_home" XDG_CONFIG_HOME="$user_home/.config" \
+        dbus-run-session -- python "$script_dir/workstation-preferences.py" \
         apply --home "$user_home" --dotfiles "$DOTFILES_DIR"
+    rm -rf "$script_dir"
 }
 
 validate_lact_hardware() {
@@ -229,6 +234,20 @@ install_dotfiles_system_files() {
     fi
 
     chmod 644 /usr/share/wayland-sessions/*.desktop
+    seed_greeter_session
+}
+
+seed_greeter_session() {
+    local session=/usr/share/wayland-sessions/hyprland-uwsm.desktop
+    local cache_dir=/var/cache/tuigreet
+
+    [[ -f $session ]] || die "greeter session not found: $session"
+    [[ ! -e $cache_dir/lastsession-path ]] || return 0
+    # tuigreet otherwise starts the first session, plain Hyprland, which
+    # bypasses uwsm's graphical-session.target and ~/.config/uwsm/env.
+    install -d -o greeter -g greeter "$cache_dir"
+    printf '%s' "$session" >"$cache_dir/lastsession-path"
+    chown greeter:greeter "$cache_dir/lastsession-path"
 }
 
 run_dotfiles_install() {

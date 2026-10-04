@@ -65,9 +65,16 @@ setup_cachyos_repo() {
         "$repo_root/kernel/common/assets/cachyos-signing-key.asc"
 }
 
+enable_multilib() {
+    sed -i '/^#\[multilib\]/{s/^#//;n;s/^#//;}' "${1:-/etc/pacman.conf}"
+}
+
 sync_pacman() {
     section "Syncing package databases"
-    retry pacman -Syu --noconfirm
+    local -a ignore=()
+    # Upgrading the live kernel deletes the running kernel's modules, which Docker needs.
+    [[ ! -d /run/archiso ]] || ignore=(--ignore linux)
+    retry pacman -Syu --noconfirm "${ignore[@]}"
 }
 
 pacstrap_base() {
@@ -147,6 +154,15 @@ install_aur_packages_as_user() {
     ' bash "${AUR_PACKAGES[@]}"
 }
 
+prepare_live_docker_storage() {
+    [[ -d /run/archiso ]] || return 0
+    local dir
+    # Container overlays cannot use the live ISO's overlay root as their upper layer.
+    for dir in /var/lib/docker /var/lib/containerd; do
+        mountpoint -q "$dir" || run mount --mkdir -t tmpfs -o mode=0711 tmpfs "$dir"
+    done
+}
+
 build_custom_kernel_packages() {
     [[ ${CUSTOM_KERNEL_BUILD:-1} == 1 ]] || return 0
     [[ -z ${CUSTOM_KERNEL_PACKAGES_DIR:-} ]] || return 0
@@ -157,10 +173,11 @@ build_custom_kernel_packages() {
     local kernel_dir="$repo_root/$CUSTOM_KERNEL_DIR"
     [[ -d $kernel_dir ]] || die "custom kernel directory not found: $kernel_dir"
 
+    prepare_live_docker_storage
     retry systemctl start docker
     (
         cd "$kernel_dir" || exit
-        retry docker compose run --rm --build kernel-builder
+        retry docker compose run --rm -T --build kernel-builder </dev/null
     )
     CUSTOM_KERNEL_PACKAGES_DIR="$kernel_dir/out/kernel"
 }

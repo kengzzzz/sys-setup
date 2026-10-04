@@ -83,8 +83,9 @@ NETWORK_INTERFACE=enp14s0
 NETWORK_ADDRESS=192.168.0.10/24
 NETWORK_GATEWAY=192.168.0.1
 NETWORK_DNS=192.168.0.3
-configure_static_network "$tmpdir/static-enp14s0.nmconnection" >/dev/null
-assert_eq "600" "$(stat -c %a "$tmpdir/static-enp14s0.nmconnection")" "NetworkManager keyfile mode"
+configure_static_network "$tmpdir/system-connections/static-enp14s0.nmconnection" >/dev/null
+assert_eq "600" "$(stat -c %a "$tmpdir/system-connections/static-enp14s0.nmconnection")" "NetworkManager keyfile mode"
+assert_eq "700" "$(stat -c %a "$tmpdir/system-connections")" "NetworkManager connections directory mode"
 configure_resolver_link "$tmpdir/resolv.conf"
 assert_eq "/run/systemd/resolve/resolv.conf" "$(readlink "$tmpdir/resolv.conf")" "resolved resolv.conf link"
 
@@ -236,7 +237,7 @@ make_kernel_fixture "$CUSTOM_KERNEL_PACKAGES_DIR/linux-bore-flto-pgo-nvidia-open
     retry() { printf '%s\n' "$*" >> "$tmpdir/build-commands"; }
     build_custom_kernel_packages >/dev/null
     assert_eq "$(cd "$ROOT_DIR/.." && pwd)/kernel/desktop/out/kernel" "$CUSTOM_KERNEL_PACKAGES_DIR" "desktop package output"
-    grep -Fxq 'docker compose run --rm --build kernel-builder' "$tmpdir/build-commands"
+    grep -Fxq 'docker compose run --rm -T --build kernel-builder' "$tmpdir/build-commands"
     CUSTOM_KERNEL_DIR=custom/workspace
     CUSTOM_KERNEL_PACKAGES_DIR="$tmpdir/packages"
     set_default_config
@@ -272,12 +273,23 @@ if printf '%s\n' "${SYSTEM_SERVICES[@]}" | grep -qx 'systemd-networkd.service'; 
     printf 'FAIL: systemd-networkd should not be enabled\n' >&2
     exit 1
 fi
-for service in NetworkManager.service systemd-resolved.service lactd.service; do
+for service in NetworkManager.service systemd-resolved.service lactd.service systemd-timesyncd.service; do
     if ! printf '%s\n' "${SYSTEM_SERVICES[@]}" | grep -qx "$service"; then
         printf 'FAIL: %s should be enabled\n' "$service" >&2
         exit 1
     fi
 done
+
+cat >"$tmpdir/pacman.conf" <<'EOF'
+#[multilib-testing]
+#Include = /etc/pacman.d/mirrorlist
+
+#[multilib]
+#Include = /etc/pacman.d/mirrorlist
+EOF
+enable_multilib "$tmpdir/pacman.conf"
+assert_eq $'#[multilib-testing]\n#Include = /etc/pacman.d/mirrorlist\n\n[multilib]\nInclude = /etc/pacman.d/mirrorlist' \
+    "$(<"$tmpdir/pacman.conf")" "live ISO multilib enablement"
 
 mkdir -p "$tmpdir/efivars"
 printf '\0\0\0\0\1' >"$tmpdir/efivars/SecureBoot-test"

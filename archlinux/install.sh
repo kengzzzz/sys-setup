@@ -120,6 +120,7 @@ main() {
     fi
 
     prepare_live_environment
+    enable_multilib
     setup_cachyos_repo
     sync_pacman
     build_custom_kernel_packages

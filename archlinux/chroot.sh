@@ -24,7 +24,7 @@ source "$SCRIPT_DIR/install.env"
 
 configure_pacman() {
     section "Configuring pacman"
-    sed -i '/^#\[multilib\]/{s/^#//;n;s/^#//;}' /etc/pacman.conf
+    enable_multilib
     pacman-key --populate archlinux cachyos
     sync_pacman
 }

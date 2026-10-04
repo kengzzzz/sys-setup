@@ -30,7 +30,8 @@ configure_static_network() {
     section "Configuring NetworkManager"
     rendered=$(mktemp)
     render_static_network "$NETWORK_INTERFACE" "$NETWORK_ADDRESS" "$NETWORK_GATEWAY" "$NETWORK_DNS" >"$rendered"
-    install -Dm600 "$rendered" "$output"
+    install -d -m700 "$(dirname -- "$output")"
+    install -m600 "$rendered" "$output"
     rm -f "$rendered"
 }
 
