@@ -25,7 +25,7 @@ OFFICIAL_PACKAGES=(
     zsh zsh-completions zsh-syntax-highlighting imagemagick tesseract tesseract-data-eng tesseract-data-tha ffmpegthumbnailer
     ttf-jetbrains-mono-nerd ttf-nerd-fonts-symbols-common ttf-ibm-plex ttf-cascadia-code ttf-material-symbols-variable fzf pkgfile
     eza fastfetch freerdp jq bc cpio ripgrep docker bubblewrap gpu-screen-recorder
-    pacman-contrib cachyos-settings socat steam stow tailscale docker-compose
+    pacman-contrib cachyos-settings socat steam proton-cachyos-slr stow tailscale docker-compose
     paru
     docker-buildx accountsservice python-dbus zed nwg-look pam-u2f
     networkmanager lact fwupd yubikey-manager yubikey-touch-detector wlr-randr openai-codex zenity

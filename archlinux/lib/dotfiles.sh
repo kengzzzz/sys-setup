@@ -235,6 +235,11 @@ install_dotfiles_system_files() {
         install -m 755 "$dot_dir/usr/bin/hyprland-quiet" /usr/local/bin/hyprland-quiet
     fi
 
+    local proton_settings=usr/share/steam/compatibilitytools.d/proton-cachyos-slr/user_settings.py
+    if [[ -f $dot_dir/$proton_settings ]]; then
+        install -Dm644 "$dot_dir/$proton_settings" "/$proton_settings"
+    fi
+
     chmod 644 /usr/share/wayland-sessions/*.desktop
     seed_greeter_session
 }
