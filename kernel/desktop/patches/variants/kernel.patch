@@ -71,21 +71,14 @@
  _major=7.2
 @@ -183,7 +178,7 @@
  _tagrel=2
- pkgrel=1
+ pkgrel=2
  _srcname=cachyos-${_major}.${_minor}-${_tagrel}
 -pkgdesc='Linux EEVDF + LTO + AutoFDO + Propeller Cachy Sauce Kernel by CachyOS with other patches and improvements.'
 +pkgdesc='Linux BORE + FullLTO + AutoFDO with other patches and improvements by CachyOS.'
  _kernver="$pkgver-$pkgrel"
  _kernuname="${pkgver}-${_pkgsuffix}"
  arch=('x86_64')
-@@ -254,3 +249,5 @@
-              "${_patchsource}/misc/nvidia/0002-fix-dsc-correct-RC-parameter-tables-to-match-VESA-DS.patch"
--             "${_patchsource}/misc/nvidia/0003-fix-dp-add-Bigscreen-Beyond-VR-headset-to-WAR-databa.patch")
-+             "${_patchsource}/misc/nvidia/0003-fix-dp-add-Bigscreen-Beyond-VR-headset-to-WAR-databa.patch"
-+             "fix-dp-detach-unplugged-1359.patch"
-+             "fix-hdmi-frl-reassessment-after-reconnect.patch")
- fi
-@@ -292,7 +289,18 @@
+@@ -292,7 +287,18 @@
  
  _die() { error "$@" ; exit 1; }
  
@@ -104,12 +97,7 @@
      cd "$_srcname"
  
      echo "Setting version..."
-@@ -308,3 +316,3 @@
-         echo "Applying patch $src..."
--        if [[ "$patch" == "${_patchsource}"/misc/nvidia/* ]]; then
-+        if [[ "$patch" == "${_patchsource}"/misc/nvidia/* || "$src" == fix-dp-detach-unplugged-1359.patch || "$src" == fix-hdmi-frl-reassessment-after-reconnect.patch ]]; then
-             patch -Np1 < "../$src" -d "${srcdir}/${_nv_open_pkg}"
-@@ -463,7 +471,6 @@
+@@ -463,7 +469,6 @@
  
      if [ "$_autofdo" = "yes" ] && [ -n "$_autofdo_profile_name" ]; then
          echo "AutoFDO profile has been found..."
@@ -117,7 +105,7 @@
      fi
  
      # Propeller Optimization
-@@ -473,7 +480,6 @@
+@@ -473,7 +478,6 @@
  
      if [ "$_propeller" = "yes" ] && [ "$_propeller_profiles" = "yes" ]; then
          echo "Propeller profile has been found..."
@@ -125,7 +113,7 @@
      fi
  
      ### Optionally use running kernel's config
-@@ -546,6 +552,7 @@
+@@ -546,6 +550,7 @@
  }
  
  build() {
@@ -133,7 +121,7 @@
      cd "$_srcname"
      make "${BUILD_FLAGS[@]}" -j"$(nproc)" all
  
-@@ -589,6 +596,7 @@
+@@ -589,6 +594,7 @@
  }
  
  _package() {

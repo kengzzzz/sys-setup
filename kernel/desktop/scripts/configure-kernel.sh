@@ -32,6 +32,7 @@ disable=(
     PERF_EVENTS_INTEL_CSTATE X86_SGX KVM_INTEL EFI_HANDOVER_PROTOCOL
     AGP VGA_SWITCHEROO DRM_AST DRM_GMA500 DRM_GUD DRM_I915
     DRM_MGAG200 DRM_NOUVEAU DRM_RADEON DRM_XE
+    WARN_CONTEXT_ANALYSIS
 )
 for symbol in "${disable[@]}" IOSF_MBI DEFAULT_HOSTNAME; do
     if [[ $(scripts/config --state "$symbol") == undef ]]; then

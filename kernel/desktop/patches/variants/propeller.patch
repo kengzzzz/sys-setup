@@ -79,7 +79,7 @@
  _major=7.2
 @@ -183,7 +178,7 @@
  _tagrel=2
- pkgrel=1
+ pkgrel=2
  _srcname=cachyos-${_major}.${_minor}-${_tagrel}
 -pkgdesc='Linux EEVDF + LTO + AutoFDO + Propeller Cachy Sauce Kernel by CachyOS with other patches and improvements.'
 +pkgdesc='Linux BORE + ThinLTO + AutoFDO + Propeller with other patches and improvements by CachyOS.'

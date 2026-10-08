@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+exec </dev/null
 
 stage=${1:-}
 case "$stage" in

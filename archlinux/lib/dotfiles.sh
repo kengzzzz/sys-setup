@@ -240,6 +240,10 @@ install_dotfiles_system_files() {
         install -Dm644 "$dot_dir/$proton_settings" "/$proton_settings"
     fi
 
+    if [[ -f $dot_dir/etc/tmpfiles.d/x3d-cache.conf ]]; then
+        install -Dm644 "$dot_dir/etc/tmpfiles.d/x3d-cache.conf" /etc/tmpfiles.d/x3d-cache.conf
+    fi
+
     chmod 644 /usr/share/wayland-sessions/*.desktop
     seed_greeter_session
 }

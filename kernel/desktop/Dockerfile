@@ -42,8 +42,6 @@ RUN test -n "${KERNEL_REF}" && \
 COPY desktop/scripts/check-profile-inputs.sh /usr/local/bin/check-profile-inputs
 COPY desktop/scripts/check-profile-inputs.sh /usr/local/bin/check-profile-inputs
 COPY desktop/patches/variants/${PATCH_FILE} ${KERNEL_SOURCE_SUBDIR}/pkgbuild.patch
-COPY desktop/patches/nvidia/fix-dp-detach-unplugged-1359.patch ${KERNEL_SOURCE_SUBDIR}/fix-dp-detach-unplugged-1359.patch
-COPY desktop/patches/nvidia/fix-hdmi-frl-reassessment-after-reconnect.patch ${KERNEL_SOURCE_SUBDIR}/fix-hdmi-frl-reassessment-after-reconnect.patch
 COPY desktop/profiles/ ${KERNEL_SOURCE_SUBDIR}/
 
 RUN cd "${KERNEL_SOURCE_SUBDIR}" && patch --batch --fuzz=0 -p1 < pkgbuild.patch && \
