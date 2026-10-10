@@ -17,7 +17,6 @@ ARCH_STOW_PACKAGES=(
     icons
     kitty
     mpv
-    muse
     nwg-look
     pipewire
     qalculate
