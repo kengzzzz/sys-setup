@@ -27,13 +27,15 @@ render_boot_entry() {
     local title=$1
     local kernel=$2
     local root_partuuid=$3
+    local sort_key=${4:-}
     local root_flags=''
     if [[ ${ROOT_FS:-btrfs} == btrfs ]]; then
         root_flags=' rootflags=subvol=@,compress=zstd:3,discard=async'
     fi
 
+    printf 'title Arch Linux (%s)\n' "$title"
+    [[ -z $sort_key ]] || printf 'sort-key %s\n' "$sort_key"
     cat <<EOF
-title Arch Linux ($title)
 linux /vmlinuz-$kernel
 initrd /initramfs-$kernel.img
 options root=PARTUUID=$root_partuuid rw$root_flags nvidia-drm.modeset=1 nvidia-drm.fbdev=1
@@ -44,6 +46,7 @@ write_boot_entry() {
     local title=$1
     local kernel=$2
     local output=$3
+    local sort_key=${4:-}
 
-    render_boot_entry "$title" "$kernel" "$ROOT_PARTUUID" >"$output"
+    render_boot_entry "$title" "$kernel" "$ROOT_PARTUUID" "$sort_key" >"$output"
 }

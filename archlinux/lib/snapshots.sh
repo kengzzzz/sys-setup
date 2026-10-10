@@ -60,7 +60,7 @@ create_initial_snapshot() {
     section "Taking the initial system snapshot"
     # A plain chroot leaves the final resolv.conf symlink intact; arch-chroot
     # would temporarily bind-mount the live resolver again.
-    run mount -t proc proc /mnt/proc
+    mountpoint -q /mnt/proc || run mount -t proc proc /mnt/proc
     run chroot /mnt /usr/local/sbin/sys-setup-boot-backup
     run chroot /mnt snapper --no-dbus -c root create \
         --description 'Fresh installation' --cleanup-algorithm number --userdata important=yes

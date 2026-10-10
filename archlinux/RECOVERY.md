@@ -49,3 +49,23 @@ does not manage them.
 
 Fix the failed update before upgrading again. Keep independent backups on
 another disk or NAS; local snapshots do not protect against disk failure.
+
+## Failed installation
+
+The failure menu retries the step after a fix, skipping finished steps. Running
+the installer again reuses the answers, YubiKeys and kernel saved in
+`/root/sys-setup-state`. Log: `/tmp/sys-setup-arch-install.log`.
+
+## Locked out
+
+There are no passwords. If no enrolled YubiKey works, boot the ISO, mount the
+root subvolume at `/mnt` and either add a key:
+
+```sh
+pacman -Sy pam-u2f
+cred=$(pamu2fcfg -N -u keng -o pam://arch-pc -i pam://arch-pc | cut -d: -f2-)
+sed -i "s|\$|:$cred|" /mnt/etc/Yubico/u2f_mappings
+```
+
+or run `arch-chroot /mnt passwd keng` and uncomment the `pam_unix.so` auth line
+in `/mnt/etc/pam.d/system-auth`.

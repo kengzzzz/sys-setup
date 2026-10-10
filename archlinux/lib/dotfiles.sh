@@ -50,51 +50,32 @@ install_oh_my_zsh() {
     '
 }
 
-prepare_user_ssh() {
-    section "Preparing user SSH keys"
-    local user_home group ssh_dir
+install_user_ssh_keys() {
+    section "Installing SSH keys"
+    local user_home group ssh_dir dir name
     user_home=$(getent passwd "$INSTALL_USER" | cut -d: -f6)
     group=$(id -gn "$INSTALL_USER")
     [[ -n $user_home ]] || die "home directory not found for $INSTALL_USER"
     ssh_dir="$user_home/.ssh"
-    printf 'Plug in your YubiKey/security key for dotfiles SSH access, then press Enter.\n'
-    read -r
     install -d -m700 -o "$INSTALL_USER" -g "$group" "$ssh_dir"
-    ssh-keyscan -H github.com >>"$ssh_dir/known_hosts" 2>/dev/null || true
-    chmod 644 "$ssh_dir/known_hosts"
-    # A new chroot user has no active seat ACL for the live ISO's FIDO device.
-    (
-        cd "$ssh_dir" || exit
-        if [[ ! -f id_ed25519_sk ]]; then
-            ssh-keygen -K
-            shopt -s nullglob
-            keys=()
-            for key in id_ed25519_sk_rk*; do
-                [[ $key == *.pub ]] || keys+=("$key")
-            done
-            ((${#keys[@]} == 1)) || {
-                printf "Expected one resident Ed25519 key; select a key as ~/.ssh/id_ed25519_sk before continuing\n" >&2
-                exit 1
-            }
-            cp -p "${keys[0]}" id_ed25519_sk
-            cp -p "${keys[0]}.pub" id_ed25519_sk.pub
-        fi
-        chmod 600 id_ed25519_sk
-    )
-    chown -R "$INSTALL_USER:$group" "$ssh_dir"
+    if [[ -f $INSTALL_STATE/known_hosts ]]; then
+        install -m644 -o "$INSTALL_USER" -g "$group" "$INSTALL_STATE/known_hosts" "$ssh_dir/known_hosts"
+    fi
+    for dir in "$INSTALL_STATE"/yubikeys/*/; do
+        [[ -f $dir/ssh_name ]] || continue
+        name=$(<"$dir/ssh_name")
+        install -m600 -o "$INSTALL_USER" -g "$group" "$dir/ssh/key" "$ssh_dir/$name"
+        install -m644 -o "$INSTALL_USER" -g "$group" "$dir/ssh/key.pub" "$ssh_dir/$name.pub"
+    done
 }
 
-clone_dotfiles() {
-    section "Cloning dotfiles"
-    local user_home group ssh_command
-    user_home=$(getent passwd "$INSTALL_USER" | cut -d: -f6)
+install_dotfiles_checkout() {
+    section "Installing dotfiles checkout"
+    local group
     group=$(id -gn "$INSTALL_USER")
-    [[ -n $user_home ]] || die "home directory not found for $INSTALL_USER"
-    printf -v ssh_command '%q ' ssh -F /dev/null -o IdentityAgent=none -o IdentitiesOnly=yes \
-        -o "UserKnownHostsFile=$user_home/.ssh/known_hosts" -i "$user_home/.ssh/id_ed25519_sk"
     if [[ ! -d $DOTFILES_DIR/.git ]]; then
-        # Sign as root while there is no logged-in target user to access FIDO.
-        GIT_SSH_COMMAND=$ssh_command git clone --branch "$DOTFILES_BRANCH" -- "$DOTFILES_REPO" "$DOTFILES_DIR"
+        [[ -d $INSTALL_STATE/dotfiles/.git ]] || die "dotfiles were not cloned before installation"
+        cp -a "$INSTALL_STATE/dotfiles" "$DOTFILES_DIR"
     fi
     chown -R "$INSTALL_USER:$group" "$DOTFILES_DIR"
 }
@@ -119,9 +100,15 @@ stow_dotfiles() {
         set -euo pipefail
         cd "$1"
         shift
+        packages=()
         for package in "$@"; do
-            [[ -d $package ]] || { printf "missing dotfiles package: %s\n" "$package" >&2; exit 1; }
+            if [[ -d $package ]]; then
+                packages+=("$package")
+            else
+                printf "warning: dotfiles have no %s package; skipped\n" "$package" >&2
+            fi
         done
+        set -- "${packages[@]}"
         rm -f ~/.zshrc
         # keep stow folding at icons/default so app-installed icon dirs stay out of the repo
         mkdir -p ~/.local/share/icons ~/.config/qalculate
@@ -266,14 +253,13 @@ run_dotfiles_install() {
         return 0
     }
 
-    install_oh_my_zsh
-    prepare_user_ssh
-    clone_dotfiles
-    install_zsh_plugins
-    stow_dotfiles
-    configure_default_browser
-    install_dotfiles_system_files
-    restore_lact_config
-    enable_target_user_services
-    apply_workstation_preferences
+    run_step oh-my-zsh install_oh_my_zsh
+    run_step dotfiles-checkout install_dotfiles_checkout
+    run_step zsh-plugins install_zsh_plugins
+    run_step stow stow_dotfiles
+    run_step default-browser configure_default_browser
+    run_step dotfiles-system-files install_dotfiles_system_files
+    run_step lact restore_lact_config
+    run_step user-services enable_target_user_services
+    run_step workstation-preferences apply_workstation_preferences
 }

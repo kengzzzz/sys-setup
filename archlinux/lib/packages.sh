@@ -19,7 +19,7 @@ OFFICIAL_PACKAGES=(
     gnu-free-fonts noto-fonts noto-fonts-cjk noto-fonts-emoji noto-fonts-extra
     greetd greetd-tuigreet hyprland swaybg swayimg hypridle hyprsunset
     quickshell uwsm xdg-desktop-portal-hyprland xdg-desktop-portal-gtk gnome-keyring seahorse
-    qt5ct qt6ct papirus-icon-theme thunar gvfs tumbler kitty cliphist grim slurp swappy hyprpicker
+    qt5ct qt6ct papirus-icon-theme thunar mousepad gvfs tumbler kitty cliphist grim slurp swappy hyprpicker
     pipewire pipewire-pulse pipewire-jack wireplumber pavucontrol blueman brave-origin-bin mpv playerctl qalculate-gtk
     nvidia-utils lib32-nvidia-utils egl-gbm libva-nvidia-driver cpupower
     zsh zsh-completions zsh-syntax-highlighting imagemagick tesseract tesseract-data-eng tesseract-data-tha ffmpegthumbnailer
@@ -39,6 +39,13 @@ AUR_PACKAGES=(
     broadcast-linux-bin tiny-poe2smoother-bin python-pywal vesktop
 )
 
+LIVE_PACKAGES=(
+    git curl rsync arch-install-scripts gptfdisk dosfstools btrfs-progs xfsprogs parted
+    docker docker-compose pam-u2f libfido2 openssh yubikey-manager pcsclite ccid
+)
+
+INSTALL_SUDOERS=/etc/sudoers.d/00-sys-setup-install
+
 WORKLOAD_PACKAGES=(
     nvidia-container-toolkit
     qemu-user-static
@@ -51,6 +58,27 @@ filesystem_packages() {
     else
         printf '%s\n' xfsprogs
     fi
+}
+
+prepare_live_environment() {
+    section "Preparing live environment"
+    local -a missing=()
+    local package
+    if [[ -d /run/archiso ]]; then
+        # The default 256M overlay is too small for a full upgrade plus Docker.
+        mount -o remount,size=20G /run/archiso/cowspace || warn "could not resize archiso cowspace"
+    fi
+    for package in "${LIVE_PACKAGES[@]}"; do
+        pacman -Qq "$package" >/dev/null 2>&1 || missing+=("$package")
+    done
+    # Upgrading the live kernel deletes the running kernel's modules, which Docker needs.
+    ((${#missing[@]} == 0)) || retry pacman -Syu --noconfirm --needed --ignore linux "${missing[@]}"
+}
+
+prepare_live_repos() {
+    enable_multilib
+    setup_cachyos_repo
+    sync_pacman
 }
 
 setup_cachyos_repo() {
@@ -111,6 +139,7 @@ install_official_packages() {
 validate_package_selection() {
     section "Checking package availability before erasing the disk"
     local db_dir metadata expected_nvidia available_nvidia
+    validate_custom_kernel_packages
     local packages=("${BASE_PACKAGES[@]}" "${OFFICIAL_PACKAGES[@]}" "$FALLBACK_KERNEL" "$FALLBACK_NVIDIA_PACKAGE")
     local -a filesystem
     mapfile -t filesystem < <(filesystem_packages)
@@ -141,17 +170,27 @@ validate_package_selection() {
         || die "custom kernel needs nvidia-utils=$expected_nvidia, but the repo has $available_nvidia; rebuild the packages before installing"
 }
 
+remove_install_sudoers() {
+    rm -f "${1:-}$INSTALL_SUDOERS"
+}
+
 install_aur_packages_as_user() {
-    section "Installing AUR packages (sudo may request the new user's password)"
+    section "Installing AUR packages"
     configure_makepkg
+    # paru needs sudo and the user has no password.
+    trap remove_install_sudoers EXIT
+    printf '%s ALL=(ALL:ALL) NOPASSWD: ALL\n' "$INSTALL_USER" >"$INSTALL_SUDOERS"
+    chmod 440 "$INSTALL_SUDOERS"
+    visudo -cqf "$INSTALL_SUDOERS"
     runuser -u "$INSTALL_USER" -- bash -lc '
         set -euo pipefail
         command -v paru >/dev/null 2>&1 || {
             printf "paru not found; expected it from the CachyOS repo\n" >&2
             exit 1
         }
-        paru -S --noconfirm --needed "$@"
+        paru -S --noconfirm --needed --skipreview "$@"
     ' bash "${AUR_PACKAGES[@]}"
+    remove_install_sudoers
 }
 
 prepare_live_docker_storage() {
@@ -180,6 +219,35 @@ build_custom_kernel_packages() {
         retry docker compose run --rm -T --build kernel-builder </dev/null
     )
     CUSTOM_KERNEL_PACKAGES_DIR="$kernel_dir/out/kernel"
+}
+
+kernel_build_inputs() {
+    local repo_root tree
+    repo_root=$(cd "$SCRIPT_DIR/.." && pwd)
+    tree=$(git -C "$repo_root" rev-parse HEAD:kernel 2>/dev/null) || return 1
+    printf '%s %s %s\n' "$PRIMARY_KERNEL" "$CUSTOM_KERNEL_DIR" "$tree"
+    {
+        git -C "$repo_root" diff HEAD -- kernel
+        git -C "$repo_root" status --porcelain -- kernel
+    } | sha256sum
+}
+
+prepare_custom_kernel_packages() {
+    local cache=$1 inputs=''
+    inputs=$(kernel_build_inputs) || inputs=''
+    if [[ -n $inputs && -f $cache/inputs && $(<"$cache/inputs") == "$inputs" ]] \
+        && (CUSTOM_KERNEL_PACKAGES_DIR=$cache validate_custom_kernel_packages) >/dev/null 2>&1; then
+        log "reusing kernel packages built by an earlier attempt"
+        return 0
+    fi
+    [[ ${CUSTOM_KERNEL_BUILD:-1} == 1 ]] || die "CUSTOM_KERNEL_BUILD=0 needs --kernel-packages-dir"
+    CUSTOM_KERNEL_PACKAGES_DIR=
+    build_custom_kernel_packages
+    validate_custom_kernel_packages
+    rm -rf "$cache"
+    mkdir -p "$cache"
+    cp -f "${CUSTOM_KERNEL_PACKAGES[@]}" "$cache/"
+    [[ -z $inputs ]] || printf '%s\n' "$inputs" >"$cache/inputs"
 }
 
 validate_custom_kernel_packages() {
@@ -213,17 +281,10 @@ validate_custom_kernel_packages() {
     [[ $kernel_version == "$nvidia_version" ]] || die "custom kernel and NVIDIA package versions differ: $kernel_version / $nvidia_version"
 }
 
-copy_custom_kernel_packages_to_target() {
-    section "Copying custom kernel packages"
-    local target_dir=/mnt/root/sys-setup-install/custom-kernel
-    mkdir -p "$target_dir"
-    cp -f "${CUSTOM_KERNEL_PACKAGES[@]}" "$target_dir/"
-}
-
 install_custom_kernel_packages() {
     section "Installing custom kernel packages"
     shopt -s nullglob
-    local packages=(/root/sys-setup-install/custom-kernel/*.pkg.tar.zst)
+    local packages=("$INSTALL_STATE"/custom-kernel/*.pkg.tar.zst)
     shopt -u nullglob
     ((${#packages[@]} > 0)) || die "no custom kernel packages copied into target"
     retry pacman -U --noconfirm "${packages[@]}"

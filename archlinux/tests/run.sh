@@ -19,6 +19,12 @@ source "$ROOT_DIR/lib/packages.sh"
 source "$ROOT_DIR/lib/dotfiles.sh"
 # shellcheck source=../lib/services.sh
 source "$ROOT_DIR/lib/services.sh"
+# shellcheck source=../lib/config.sh
+source "$ROOT_DIR/lib/config.sh"
+# shellcheck source=../lib/steps.sh
+source "$ROOT_DIR/lib/steps.sh"
+# shellcheck source=../lib/enroll.sh
+source "$ROOT_DIR/lib/enroll.sh"
 
 assert_eq() {
     local expected=$1
@@ -72,6 +78,10 @@ btrfs_boot=$(render_boot_entry linux-bore-flto-pgo linux-bore-flto-pgo abc-123)
     printf 'FAIL: root must remain bootable when rollback changes its subvolume ID\n' >&2
     exit 1
 }
+[[ $(render_boot_entry linux-bore-flto-pgo linux-bore-flto-pgo abc-123 arch-1) == $'title Arch Linux (linux-bore-flto-pgo)\nsort-key arch-1\nlinux '* ]] || {
+    printf 'FAIL: boot entry sort key\n' >&2
+    exit 1
+}
 assert_eq $'btrfs-progs\nsnapper\nsnap-pac\nrsync' "$(filesystem_packages)" "Btrfs recovery packages"
 ROOT_FS=xfs
 assert_eq xfsprogs "$(filesystem_packages)" "XFS filesystem package"
@@ -117,7 +127,7 @@ grep -q '^# -auth      \[success=1 default=bad\]     pam_unix.so' "$tmpdir/syste
 
 for pkg in networkmanager quickshell hypridle uwsm brave-origin-bin lact fzf pkgfile \
     ripgrep fwupd yubikey-manager yubikey-touch-detector wlr-randr pipewire-jack openai-codex zenity zed \
-    rsync dconf wl-clipboard xdg-utils which proton-cachyos-slr; do
+    rsync dconf wl-clipboard xdg-utils which proton-cachyos-slr mousepad; do
     if ! printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx "$pkg"; then
         printf 'FAIL: %s should be in official package list\n' "$pkg" >&2
         exit 1
@@ -326,5 +336,293 @@ if (validate_lact_hardware "$tmpdir/lact.yaml" "$tmpdir/sysfs") >/dev/null 2>&1;
     printf 'FAIL: LACT hardware validation accepted a mismatched GPU\n' >&2
     exit 1
 fi
+
+STEP_DONE_DIR="$tmpdir/steps"
+STEP_FAILURE_HANDLER=
+stops_at_first_error() {
+    false
+    touch "$tmpdir/continued-after-error"
+}
+set +e
+(run_step errexit stops_at_first_error) 2>/dev/null
+status=$?
+set -e
+assert_eq 1 "$status" "a failing step reports its status"
+[[ ! -e $tmpdir/continued-after-error ]] || {
+    printf 'FAIL: a step kept running after a failing command\n' >&2
+    exit 1
+}
+[[ ! -e $STEP_DONE_DIR/errexit ]] || {
+    printf 'FAIL: a failed step was marked done\n' >&2
+    exit 1
+}
+fails_once() {
+    [[ -e $tmpdir/failed-once ]] || {
+        touch "$tmpdir/failed-once"
+        return 1
+    }
+}
+retry_answer() { return 0; }
+STEP_FAILURE_HANDLER=retry_answer
+run_step retried fails_once >/dev/null
+[[ -e $STEP_DONE_DIR/retried ]] || {
+    printf 'FAIL: a retried step was not marked done\n' >&2
+    exit 1
+}
+must_not_run() { touch "$tmpdir/ran-finished-step"; }
+run_step retried must_not_run >/dev/null
+[[ ! -e $tmpdir/ran-finished-step ]] || {
+    printf 'FAIL: a finished step ran again\n' >&2
+    exit 1
+}
+skip_answer() { return 2; }
+always_fails() { return 3; }
+STEP_FAILURE_HANDLER=skip_answer
+run_step skipped always_fails 2>/dev/null
+[[ ! -e $STEP_DONE_DIR/skipped ]] || {
+    printf 'FAIL: a skipped step was marked done\n' >&2
+    exit 1
+}
+quit_answer() { return 1; }
+STEP_FAILURE_HANDLER=quit_answer
+set +e
+(run_step quit always_fails)
+status=$?
+set -e
+assert_eq 3 "$status" "quitting keeps the failed step's status"
+STEP_DONE_DIR=
+STEP_FAILURE_HANDLER=
+
+assert_eq typed "$(ask answer 'Question:' <<<typed 2>/dev/null && printf '%s' "$answer")" "ask reads piped input"
+read_into_value() {
+    local value=old
+    ask value 'Question:' <<<new 2>/dev/null
+    printf '%s' "$value"
+}
+assert_eq new "$(read_into_value)" "ask sets the caller's local variable"
+
+for address in 192.168.0.1 10.0.0.255; do
+    valid_ipv4 "$address" || {
+        printf 'FAIL: %s should be a valid IPv4 address\n' "$address" >&2
+        exit 1
+    }
+done
+for address in 192.168.0 256.1.1.1 1.2.3.4.5 a.b.c.d; do
+    if valid_ipv4 "$address"; then
+        printf 'FAIL: %s should be rejected\n' "$address" >&2
+        exit 1
+    fi
+done
+valid_ipv4_cidr 192.168.0.10/24 && ! valid_ipv4_cidr 192.168.0.10 && ! valid_ipv4_cidr 192.168.0.10/33 || {
+    printf 'FAIL: CIDR validation\n' >&2
+    exit 1
+}
+valid_dns_list '192.168.0.3;1.1.1.1' && ! valid_dns_list '192.168.0.3, 1.1.1.1' || {
+    printf 'FAIL: DNS list validation\n' >&2
+    exit 1
+}
+(
+    unset TARGET_DISK
+    set_default_config
+    assert_eq "" "$TARGET_DISK" "no default target disk"
+    assert_eq "" "$(setting_error INSTALL_USER)" "default user is valid"
+    INSTALL_USER=root
+    [[ -n $(setting_error INSTALL_USER) ]]
+    HOSTNAME='bad host'
+    [[ -n $(setting_error HOSTNAME) ]]
+    TAILSCALE_UP_ARGS='--advertise-tags="tag:x"'
+    [[ -n $(setting_error TAILSCALE_UP_ARGS) ]]
+    ENABLE_DOTFILES=0
+    RESTORE_LACT_CONFIG=1
+    [[ -n $(setting_error RESTORE_LACT_CONFIG) ]]
+) || {
+    printf 'FAIL: setting validation\n' >&2
+    exit 1
+}
+
+mkdir -p "$tmpdir/by-id" "$tmpdir/dev"
+touch "$tmpdir/dev/nvme1n1" "$tmpdir/dev/nvme1n1p1"
+ln -s ../dev/nvme1n1 "$tmpdir/by-id/nvme-eui.0025385b41b2a6a1"
+ln -s ../dev/nvme1n1 "$tmpdir/by-id/nvme-Samsung_SSD_9100_PRO_4TB_S7XXNJ0Y"
+ln -s ../dev/nvme1n1 "$tmpdir/by-id/nvme-Samsung_SSD_9100_PRO_4TB_S7XXNJ0Y_1"
+ln -s ../dev/nvme1n1p1 "$tmpdir/by-id/nvme-Samsung_SSD_9100_PRO_4TB_S7XXNJ0Y-part1"
+assert_eq "$tmpdir/by-id/nvme-Samsung_SSD_9100_PRO_4TB_S7XXNJ0Y" \
+    "$(stable_disk_path "$tmpdir/dev/nvme1n1" "$tmpdir/by-id")" "disk saved by model and serial"
+assert_eq /dev/vdz "$(stable_disk_path /dev/vdz "$tmpdir/by-id")" "disk without by-id link keeps its name"
+
+credential_a='kh_A+/=,pkA+/=,es256,+presence+pin'
+credential_b='kh_B+/=,pkB+/=,es256,+presence+pin'
+mkdir -p "$tmpdir/keys/20683968" "$tmpdir/keys/36043558" "$tmpdir/keys/ssh-only"
+printf '%s\n' "$credential_a" >"$tmpdir/keys/20683968/u2f"
+printf '%s\n' "$credential_b" >"$tmpdir/keys/36043558/u2f"
+assert_eq "$credential_a:$credential_b" "$(u2f_credentials "$tmpdir/keys")" "credentials of all keys are joined"
+assert_eq "keng:$credential_a:$credential_b"$'\n'"root:$credential_a:$credential_b" \
+    "$(render_u2f_mappings "$(u2f_credentials "$tmpdir/keys")" keng root)" "every key unlocks the user and root"
+printf 'keng:%s\n' "$credential_a" >"$tmpdir/keys/36043558/u2f"
+if u2f_credentials "$tmpdir/keys" >/dev/null; then
+    printf 'FAIL: a malformed credential was accepted\n' >&2
+    exit 1
+fi
+if u2f_credentials "$tmpdir/keys/ssh-only" >/dev/null; then
+    printf 'FAIL: an empty credential list was accepted\n' >&2
+    exit 1
+fi
+
+DOTFILES_REPO=git@github.com:kengzzzz/dotfiles.git
+dotfiles_repo_uses_ssh && assert_eq github.com "$(dotfiles_repo_host)" "scp-style repo host"
+DOTFILES_REPO=ssh://git@git.example.com/dotfiles.git
+dotfiles_repo_uses_ssh && assert_eq git.example.com "$(dotfiles_repo_host)" "ssh URL repo host"
+for DOTFILES_REPO in https://github.com/kengzzzz/dotfiles.git /root/dotfiles.bundle; do
+    if dotfiles_repo_uses_ssh; then
+        printf 'FAIL: %s does not need an SSH key\n' "$DOTFILES_REPO" >&2
+        exit 1
+    fi
+done
+
+(
+    STATE_DIR="$tmpdir/state"
+    DOTFILES_REPO=git@github.com:kengzzzz/dotfiles.git
+    mkdir -p "$STATE_DIR/dotfiles/ssh/.ssh" "$STATE_DIR/yubikeys" "$tmpdir/bin"
+    cat >"$STATE_DIR/dotfiles/ssh/.ssh/config" <<'EOF'
+Match exec "ykman list --serials 2>/dev/null | grep -qx 36043558"
+    Tag yubikey-5c-nfc
+
+Match tagged yubikey-5c-nfc
+    IdentityFile ~/.ssh/id_ed25519_sk_5c_nfc
+
+Match !tagged yubikey-5c-nfc
+    IdentityFile ~/.ssh/id_ed25519_sk
+EOF
+    printf '#!/bin/sh\ncat %q\n' "$tmpdir/plugged-serial" >"$tmpdir/bin/ykman"
+    chmod +x "$tmpdir/bin/ykman"
+    PATH="$tmpdir/bin:$PATH"
+    for serial in 20683968 36043558 99999999; do
+        mkdir -p "$STATE_DIR/yubikeys/$serial/ssh"
+        printf 'id_ed25519_sk_rk\n' >"$STATE_DIR/yubikeys/$serial/ssh/downloaded-name"
+        printf '%s\n' "$serial" >"$tmpdir/plugged-serial"
+        choose_ssh_key_name "$STATE_DIR/yubikeys/$serial" "$serial" 2>/dev/null
+    done
+    assert_eq id_ed25519_sk "$(<"$STATE_DIR/yubikeys/20683968/ssh_name")" "5 Nano SSH key name"
+    assert_eq id_ed25519_sk_5c_nfc "$(<"$STATE_DIR/yubikeys/36043558/ssh_name")" "5C NFC SSH key name"
+    assert_eq id_ed25519_sk_99999999 "$(<"$STATE_DIR/yubikeys/99999999/ssh_name")" "unmatched key gets a unique name"
+    rm -rf "$STATE_DIR/dotfiles"
+    mkdir -p "$STATE_DIR/yubikeys/11111111/ssh"
+    printf 'id_ecdsa_sk_rk_ssh_work\n' >"$STATE_DIR/yubikeys/11111111/ssh/downloaded-name"
+    choose_ssh_key_name "$STATE_DIR/yubikeys/11111111" 11111111
+    assert_eq id_ecdsa_sk "$(<"$STATE_DIR/yubikeys/11111111/ssh_name")" "default name without a dotfiles config"
+)
+
+(
+    STATE_DIR="$tmpdir/dotfiles-state"
+    ENABLE_DOTFILES=1
+    RESTORE_LACT_CONFIG=0
+    mkdir -p "$STATE_DIR/dotfiles/etc/greetd" "$STATE_DIR/dotfiles/etc/tuigreet"
+    for package in "${ARCH_STOW_PACKAGES[@]}"; do
+        [[ $package == zed ]] || mkdir -p "$STATE_DIR/dotfiles/$package"
+    done
+    touch "$STATE_DIR/dotfiles/etc/greetd/config.toml" "$STATE_DIR/dotfiles/etc/tuigreet/config.toml"
+    problems=$(dotfiles_problems)
+    [[ $problems == *"warning: dotfiles have no 'zed' Stow package"* ]]
+    [[ $problems == *"error: dotfiles lack usr/share/wayland-sessions"* ]]
+    [[ $problems != *"etc/greetd"* ]]
+) || {
+    printf 'FAIL: dotfiles checks before erasing the disk\n' >&2
+    exit 1
+}
+
+(
+    INSTALL_SUDOERS="$tmpdir/sudoers-install"
+    INSTALL_USER=keng
+    configure_makepkg() { :; }
+    visudo() { :; }
+    runuser() { [[ -f $INSTALL_SUDOERS ]] && return 7; }
+    set +e
+    (
+        set -e
+        install_aur_packages_as_user
+    ) >/dev/null
+    status=$?
+    set -e
+    assert_eq 7 "$status" "AUR step saw the temporary sudo rule"
+    [[ ! -e $INSTALL_SUDOERS ]] || {
+        printf 'FAIL: temporary sudo rule left behind after a failed AUR build\n' >&2
+        exit 1
+    }
+    runuser() { :; }
+    install_aur_packages_as_user >/dev/null
+    [[ ! -e $INSTALL_SUDOERS ]] || {
+        printf 'FAIL: temporary sudo rule left behind after AUR packages\n' >&2
+        exit 1
+    }
+)
+
+(
+    PRIMARY_KERNEL=linux-bore-flto-pgo
+    cache="$tmpdir/kernel-cache"
+    mkdir -p "$cache"
+    cp "$tmpdir/packages/linux-bore-flto-pgo-1-1-x86_64.pkg.tar.zst" \
+        "$tmpdir/packages/linux-bore-flto-pgo-nvidia-open-1-1-x86_64.pkg.tar.zst" "$cache/"
+    kernel_build_inputs() { printf 'same sources\n'; }
+    build_custom_kernel_packages() { touch "$tmpdir/kernel-rebuilt"; }
+    printf 'same sources\n' >"$cache/inputs"
+    prepare_custom_kernel_packages "$cache" >/dev/null
+    [[ ! -e $tmpdir/kernel-rebuilt ]] || {
+        printf 'FAIL: matching kernel packages were rebuilt\n' >&2
+        exit 1
+    }
+    printf 'older sources\n' >"$cache/inputs"
+    build_custom_kernel_packages() {
+        touch "$tmpdir/kernel-rebuilt"
+        CUSTOM_KERNEL_PACKAGES_DIR="$tmpdir/packages"
+    }
+    prepare_custom_kernel_packages "$cache" >/dev/null
+    [[ -e $tmpdir/kernel-rebuilt ]] || {
+        printf 'FAIL: kernel packages from other sources were reused\n' >&2
+        exit 1
+    }
+    assert_eq 'same sources' "$(<"$cache/inputs")" "rebuilt kernel cache records its sources"
+)
+
+(
+    bin="$tmpdir/tailscale-bin"
+    mkdir -p "$bin" "$tmpdir/tailscale-home"
+    cat >"$bin/sudo" <<'EOF'
+#!/bin/bash
+exec "$@"
+EOF
+    cat >"$bin/tailscale" <<EOF
+#!/bin/bash
+case \$1 in
+    status) [[ -e $tmpdir/tailscale-up ]] && echo '{"BackendState":"Running"}' || echo '{"BackendState":"NeedsLogin"}' ;;
+    up)
+        shift
+        printf '%s\n' "\$*" >$tmpdir/tailscale-args
+        printf '\nTo authenticate, visit:\n\n\thttps://login.tailscale.com/a/abc123\n\n' >&2
+        touch $tmpdir/tailscale-up
+        ;;
+esac
+EOF
+    printf '#!/bin/bash\nprintf "%%s\\n" "$1" >%q\n' "$tmpdir/opened-url" >"$bin/xdg-open"
+    printf '#!/bin/bash\nprintf "%%s\\n" "$*" >%q\n' "$tmpdir/kitty-args" >"$bin/kitty"
+    chmod +x "$bin"/*
+    printf 'TAILSCALE_UP_ARGS=( --accept-dns=false --accept-routes )\n' >"$tmpdir/tailscale-login.conf"
+    export PATH="$bin:$PATH" HOME="$tmpdir/tailscale-home" TAILSCALE_LOGIN_CONF="$tmpdir/tailscale-login.conf"
+    export TAILSCALE_LOGIN_CLOSE_DELAY=0
+    unset XDG_STATE_HOME
+    script="$ROOT_DIR/scripts/tailscale-login.sh"
+    bash "$script"
+    [[ $(<"$tmpdir/kitty-args") == *"$script --terminal" ]]
+    bash "$script" --terminal </dev/null >/dev/null
+    sleep 0.2
+    assert_eq '--accept-dns=false --accept-routes' "$(<"$tmpdir/tailscale-args")" "tailscale up options"
+    assert_eq https://login.tailscale.com/a/abc123 "$(<"$tmpdir/opened-url")" "login page opened"
+    [[ -e $HOME/.local/state/sys-setup/tailscale-login.done ]]
+    rm "$tmpdir/kitty-args"
+    bash "$script"
+    [[ ! -e $tmpdir/kitty-args ]]
+) || {
+    printf 'FAIL: Tailscale first-login script\n' >&2
+    exit 1
+}
 
 printf 'archlinux installer tests passed\n'

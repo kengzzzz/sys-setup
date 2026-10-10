@@ -55,23 +55,17 @@ retry() {
     done
 }
 
-prompt_default() {
-    local var_name=$1
-    local label=$2
-    local default_value=$3
-    local value
-
-    read -r -p "${label} [${default_value}]: " value
-    printf -v "$var_name" '%s' "${value:-$default_value}"
+# Drop typed-ahead keys, e.g. an extra Enter.
+drain_input() {
+    [[ -t 0 ]] || return 0
+    while read -r -t 0.05 -n 4096 _; do :; done
+    return 0
 }
 
-confirm_exact() {
-    local expected=$1
-    local prompt=$2
-    local answer
-
-    read -r -p "${prompt} " answer
-    [[ $answer == "$expected" ]]
+# No locals: they would shadow the caller's variable.
+ask() {
+    drain_input
+    read -r -p "$2 " "$1" || die "input closed while waiting for an answer"
 }
 
 confirm_yes_no() {
@@ -84,7 +78,7 @@ confirm_yes_no() {
         suffix='[Y/n]'
     fi
 
-    read -r -p "${prompt} ${suffix} " answer
+    ask answer "${prompt} ${suffix}"
     answer=${answer:-$default}
     [[ $answer == Y || $answer == y || $answer == yes || $answer == YES ]]
 }
@@ -99,6 +93,7 @@ write_kv() {
 
 init_logging() {
     INSTALL_LOG=${INSTALL_LOG:-/tmp/sys-setup-arch-install.log}
+    [[ ! -s $INSTALL_LOG ]] || mv -f "$INSTALL_LOG" "$INSTALL_LOG.previous"
     : >"$INSTALL_LOG"
     exec > >(tee -a "$INSTALL_LOG") 2>&1
     log "logging to $INSTALL_LOG"

@@ -72,3 +72,54 @@ enable_target_user_services() {
     chown -h "$INSTALL_USER:$group" "$ssh_wants/yubikey-touch-detector.socket" \
         "$broadcast_wants/yubikey-touch-detector.service"
 }
+
+install_user_dirs() {
+    local user_home=$1 group=$2 dir=$3
+    local path=$user_home part
+    local -a parts
+    IFS=/ read -ra parts <<<"${dir#"$user_home"/}"
+    for part in "${parts[@]}"; do
+        path+=/$part
+        install -d -o "$INSTALL_USER" -g "$group" "$path"
+    done
+}
+
+configure_tailscale_first_login() {
+    [[ ${TAILSCALE_FIRST_LOGIN:-1} == 1 ]] || return 0
+    section "Scheduling Tailscale login for the first desktop session"
+    local archlinux_dir user_home group wants unit=sys-setup-tailscale-login.service
+    local -a args
+    archlinux_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+    user_home=$(getent passwd "$INSTALL_USER" | cut -d: -f6)
+    group=$(id -gn "$INSTALL_USER")
+    [[ -n $user_home ]] || die "home directory not found for $INSTALL_USER"
+
+    install -Dm755 "$archlinux_dir/scripts/tailscale-login.sh" /usr/local/bin/sys-setup-tailscale-login
+    read -ra args <<<"$TAILSCALE_UP_ARGS"
+    install -d /etc/sys-setup
+    {
+        printf 'TAILSCALE_UP_ARGS=('
+        ((${#args[@]} == 0)) || printf ' %q' "${args[@]}"
+        printf ' )\n'
+    } >/etc/sys-setup/tailscale-login.conf
+    install -d /etc/systemd/user
+    # Runs at each login until the script marks success.
+    cat >"/etc/systemd/user/$unit" <<'EOF'
+[Unit]
+Description=Connect Tailscale on the first desktop login
+After=graphical-session.target
+PartOf=graphical-session.target
+ConditionPathExists=!%S/sys-setup/tailscale-login.done
+
+[Service]
+Type=exec
+ExecStart=/usr/local/bin/sys-setup-tailscale-login
+
+[Install]
+WantedBy=graphical-session.target
+EOF
+    wants="$user_home/.config/systemd/user/graphical-session.target.wants"
+    install_user_dirs "$user_home" "$group" "$wants"
+    link_user_unit "$user_home" "$unit" graphical-session.target /etc/systemd/user
+    chown -h "$INSTALL_USER:$group" "$wants/$unit"
+}
