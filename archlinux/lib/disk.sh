@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+MIN_ROOT_BYTES=$((32 * 1024 ** 3))
+
 partition_suffix() {
     local disk=$1
 
@@ -91,7 +93,7 @@ disk_in_use() {
 }
 
 target_disk_error() {
-    local device type
+    local device type efi_bytes
     [[ -n ${TARGET_DISK:-} ]] || {
         echo "choose the disk to erase"
         return 0
@@ -114,9 +116,10 @@ target_disk_error() {
         echo "a partition on $device is mounted or used as swap"
         return 0
     fi
-    sgdisk --pretend --clear -n "1:0:+${EFI_SIZE}" -t 1:ef00 \
-        -n 2:0:0 -t 2:8304 "$device" >/dev/null 2>&1 \
-        || echo "too small for a ${EFI_SIZE} EFI partition plus root"
+    efi_bytes=$(numfmt --from=iec "${EFI_SIZE^^}" 2>/dev/null) || return 0
+    if (($(lsblk -bdno SIZE "$device") < efi_bytes + MIN_ROOT_BYTES)); then
+        echo "too small for a ${EFI_SIZE} EFI partition plus a 32G root"
+    fi
 }
 
 choose_target_disk() {
