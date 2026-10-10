@@ -63,6 +63,9 @@ format_partitions() {
     else
         retry mkfs.xfs -f -m crc=1,reflink=1,rmapbt=1 "$ROOT_PARTITION"
     fi
+    # Refresh filesystem metadata after replacing a previous filesystem.
+    run udevadm trigger --action=change "$EFI_PARTITION" "$ROOT_PARTITION"
+    run udevadm settle
 }
 
 mount_target() {
@@ -70,23 +73,23 @@ mount_target() {
     if [[ $ROOT_FS == btrfs ]]; then
         local options=noatime,compress=zstd:3,discard=async
         local subvolume
-        run mount -o "$options,subvolid=5" "$ROOT_PARTITION" /mnt
+        run mount -t btrfs -o "$options,subvolid=5" "$ROOT_PARTITION" /mnt
         for subvolume in @ @home @log @cache @docker @containerd @snapshots; do
             run btrfs subvolume create "/mnt/$subvolume"
         done
         run umount /mnt
-        run mount -o "$options,subvol=@" "$ROOT_PARTITION" /mnt
-        run mount --mkdir -o "$options,subvol=@home" "$ROOT_PARTITION" /mnt/home
-        run mount --mkdir -o "$options,subvol=@log" "$ROOT_PARTITION" /mnt/var/log
-        run mount --mkdir -o "$options,subvol=@cache" "$ROOT_PARTITION" /mnt/var/cache
-        run mount --mkdir -o "$options,subvol=@docker" "$ROOT_PARTITION" /mnt/var/lib/docker
-        run mount --mkdir -o "$options,subvol=@containerd" "$ROOT_PARTITION" /mnt/var/lib/containerd
-        run mount --mkdir -o "$options,subvol=@snapshots" "$ROOT_PARTITION" /mnt/.snapshots
+        run mount -t btrfs -o "$options,subvol=@" "$ROOT_PARTITION" /mnt
+        run mount --mkdir -t btrfs -o "$options,subvol=@home" "$ROOT_PARTITION" /mnt/home
+        run mount --mkdir -t btrfs -o "$options,subvol=@log" "$ROOT_PARTITION" /mnt/var/log
+        run mount --mkdir -t btrfs -o "$options,subvol=@cache" "$ROOT_PARTITION" /mnt/var/cache
+        run mount --mkdir -t btrfs -o "$options,subvol=@docker" "$ROOT_PARTITION" /mnt/var/lib/docker
+        run mount --mkdir -t btrfs -o "$options,subvol=@containerd" "$ROOT_PARTITION" /mnt/var/lib/containerd
+        run mount --mkdir -t btrfs -o "$options,subvol=@snapshots" "$ROOT_PARTITION" /mnt/.snapshots
         chmod 700 /mnt/.snapshots
     else
-        run mount -o noatime "$ROOT_PARTITION" /mnt
+        run mount -t xfs -o noatime "$ROOT_PARTITION" /mnt
     fi
-    run mount --mkdir -o defaults,noatime,umask=0077 "$EFI_PARTITION" /mnt/boot
+    run mount --mkdir -t vfat -o defaults,noatime,umask=0077 "$EFI_PARTITION" /mnt/boot
     mkdir -p /mnt/etc /mnt/var/cache/pacman/pkg /mnt/var/log
     printf 'KEYMAP=%s\n' "$KEYMAP" >/mnt/etc/vconsole.conf
 }
