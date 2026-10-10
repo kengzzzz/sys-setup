@@ -41,7 +41,7 @@ AUR_PACKAGES=(
 
 LIVE_PACKAGES=(
     git curl rsync arch-install-scripts gptfdisk dosfstools btrfs-progs xfsprogs parted
-    docker docker-compose pam-u2f libfido2 openssh yubikey-manager pcsclite ccid
+    docker docker-compose pam-u2f libfido2 openssh yubikey-manager pcsclite ccid efibootmgr
 )
 
 INSTALL_SUDOERS=/etc/sudoers.d/00-sys-setup-install

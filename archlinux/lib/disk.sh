@@ -42,11 +42,10 @@ stable_disk_path() {
 }
 
 live_boot_disk() {
-    local source parent
+    local source
     source=$(findmnt -no SOURCE /run/archiso/bootmnt 2>/dev/null) || return 0
-    source=$(readlink -f -- "$source")
-    parent=$(lsblk -no PKNAME "$source" 2>/dev/null | head -n1)
-    printf '%s\n' "${parent:-${source##*/}}"
+    # Walk up from a partition or Ventoy's device-mapper node to the disk.
+    lsblk -snro NAME,TYPE "$(readlink -f -- "$source")" 2>/dev/null | awk '$2 == "disk" { print $1; exit }'
 }
 
 # Still detects the boot USB after copytoram unmounted it.

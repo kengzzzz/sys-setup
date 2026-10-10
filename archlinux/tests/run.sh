@@ -313,6 +313,22 @@ if secure_boot_enabled "$tmpdir/efivars"; then
     exit 1
 fi
 
+efibootmgr() {
+    cat <<'EOF'
+BootCurrent: 0002
+BootOrder: 0002,0001,0004,0000
+Boot0000* UiApp	FvVol(7cb8bdc9-f8eb-4f34-aaea-3ee4af6516a1)/FvFile(462caa21-7614-4503-836e-8ab6f4662331)
+Boot0001* UEFI OS	HD(1,GPT,11111111-aaaa-4bbb-8ccc-000000000001,0x800,0xa00000)/\EFI\BOOT\BOOTX64.EFI
+Boot0002* UEFI OS	HD(2,GPT,22222222-aaaa-4bbb-8ccc-000000000002,0x800,0x10000)/\EFI\BOOT\BOOTX64.EFI
+Boot0004* Linux Boot Manager	HD(1,GPT,11111111-AAAA-4BBB-8CCC-000000000001,0x800,0xa00000)/\EFI\systemd\systemd-bootx64.efi
+EOF
+}
+assert_eq 0004 "$(firmware_boot_entry 11111111-aaaa-4bbb-8ccc-000000000001)" "systemd-boot entry on the target ESP"
+assert_eq "" "$(firmware_boot_entry 22222222-aaaa-4bbb-8ccc-000000000002)" "fallback entries are not systemd-boot"
+unset -f efibootmgr
+assert_eq 0004,0002,0001,0000 "$(boot_order_with_first 0004 0002,0001,0004,0000)" "new system first in boot order"
+assert_eq 0004 "$(boot_order_with_first 0004 '')" "boot order without other entries"
+
 expected_loader='default default.conf
 timeout 3
 console-mode max

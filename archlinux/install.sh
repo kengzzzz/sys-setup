@@ -116,11 +116,13 @@ run_chroot_install() {
 }
 
 finish_target() {
+    resolve_target_disk
     remove_install_sudoers /mnt
     configure_resolver_link
     remove_staged_copies
     save_live_fixes
     create_initial_snapshot
+    prefer_installed_system
 }
 
 ask_questions() {

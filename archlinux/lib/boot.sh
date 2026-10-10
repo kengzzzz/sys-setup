@@ -42,6 +42,48 @@ options root=PARTUUID=$root_partuuid rw$root_flags nvidia-drm.modeset=1 nvidia-d
 EOF
 }
 
+firmware_boot_entry() {
+    local efi_partuuid=$1
+    efibootmgr -v 2>/dev/null | awk -v uuid="${efi_partuuid,,}" '
+        /^Boot[0-9A-Fa-f]{4}/ && index(tolower($0), uuid) && index(tolower($0), "systemd-bootx64.efi") {
+            print substr($1, 5, 4)
+            exit
+        }'
+}
+
+boot_order_with_first() {
+    local first=$1 order=$2 entry result=$1
+    local -a entries
+    IFS=, read -ra entries <<<"$order"
+    for entry in "${entries[@]}"; do
+        [[ ${entry^^} == "${first^^}" ]] || result+=,$entry
+    done
+    printf '%s\n' "$result"
+}
+
+# Firmware may keep booting the disk the installer came from, and its fallback
+# entries are all named "UEFI OS". Put systemd-boot first and force the next boot.
+prefer_installed_system() {
+    section "Setting the firmware boot order"
+    local efi_partuuid entry order
+    efi_partuuid=$(blkid -s PARTUUID -o value "$EFI_PARTITION")
+    entry=$(firmware_boot_entry "$efi_partuuid")
+    if [[ -z $entry ]]; then
+        efibootmgr --create --disk "$TARGET_DEVICE" --part 1 --label 'Linux Boot Manager' \
+            --loader '\EFI\systemd\systemd-bootx64.efi' >/dev/null || true
+        entry=$(firmware_boot_entry "$efi_partuuid")
+    fi
+    if [[ -z $entry ]]; then
+        warn "no firmware boot entry for the new system; pick it in the firmware boot menu"
+        return 0
+    fi
+    order=$(efibootmgr | sed -n 's/^BootOrder: //p')
+    efibootmgr --bootorder "$(boot_order_with_first "$entry" "$order")" >/dev/null \
+        || warn "could not change the firmware boot order"
+    efibootmgr --bootnext "$entry" >/dev/null || warn "could not set the next boot entry"
+    log "firmware boots Boot$entry (Linux Boot Manager) first"
+}
+
 write_boot_entry() {
     local title=$1
     local kernel=$2
