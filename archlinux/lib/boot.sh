@@ -38,7 +38,7 @@ render_boot_entry() {
     cat <<EOF
 linux /vmlinuz-$kernel
 initrd /initramfs-$kernel.img
-options root=PARTUUID=$root_partuuid rw$root_flags nvidia-drm.modeset=1 nvidia-drm.fbdev=1
+options root=PARTUUID=$root_partuuid rw$root_flags nvidia-drm.modeset=1 nvidia-drm.fbdev=1 quiet loglevel=3 systemd.show_status=false
 EOF
 }
 

@@ -29,7 +29,7 @@ OFFICIAL_PACKAGES=(
     paru
     docker-buildx accountsservice python-dbus zed nwg-look pam-u2f
     networkmanager lact fwupd yubikey-manager yubikey-touch-detector wlr-randr openai-codex zenity
-    cava claude-code ddcutil mission-center wine clang cmake
+    cava claude-code ddcutil mission-center wine clang cmake rustup nasm
     edk2-shell sbctl sbsigntools
     rsync dconf wl-clipboard xdg-utils which
 )

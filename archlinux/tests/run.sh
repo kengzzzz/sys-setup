@@ -65,7 +65,7 @@ assert_eq "$expected_network" "$(render_static_network enp14s0 192.168.0.10/24 1
 expected_boot='title Arch Linux (linux-bore-flto-pgo)
 linux /vmlinuz-linux-bore-flto-pgo
 initrd /initramfs-linux-bore-flto-pgo.img
-options root=PARTUUID=abc-123 rw nvidia-drm.modeset=1 nvidia-drm.fbdev=1'
+options root=PARTUUID=abc-123 rw nvidia-drm.modeset=1 nvidia-drm.fbdev=1 quiet loglevel=3 systemd.show_status=false'
 ROOT_FS=xfs
 assert_eq "$expected_boot" "$(render_boot_entry linux-bore-flto-pgo linux-bore-flto-pgo abc-123)" "boot entry rendering"
 ROOT_FS=btrfs
@@ -156,7 +156,7 @@ for pkg in base-devel sudo cachyos-keyring cachyos-mirrorlist; do
         exit 1
     fi
 done
-for pkg in cmake clang cava claude-code ddcutil hyprsunset mission-center wine ttf-cascadia-code ttf-material-symbols-variable; do
+for pkg in cmake clang rustup nasm cava claude-code ddcutil hyprsunset mission-center wine ttf-cascadia-code ttf-material-symbols-variable; do
     if ! printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx "$pkg"; then
         printf 'FAIL: installed package %s should be in the repo package list\n' "$pkg" >&2
         exit 1
