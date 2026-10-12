@@ -49,14 +49,28 @@ RUN cd "${KERNEL_SOURCE_SUBDIR}" && patch --batch --fuzz=0 -p1 < pkgbuild.patch 
 
 FROM cachyos-base AS autofdo-profiler
 
+ARG LOAD_KERNEL_VERSION=7.2
+ARG LOAD_KERNEL_SHA256=f9fef3d14c0df53819026f4be74459835c2a0b0dcbf5b5bbd9ea19f0829402b3
+
 RUN pacman -Syyu --noconfirm --needed \
-    perf zstd tar bash llvm binutils python binutils python
+    perf llvm binutils python zstd tar stress-ng rt-tests ripgrep ffmpeg pipewire-audio libglvnd base-devel bc libelf && \
+    pacman -Scc --noconfirm && \
+    rm -rf /var/lib/pacman/sync/*
+
+RUN mkdir /usr/src/linux && \
+    curl -fsSL "https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-${LOAD_KERNEL_VERSION}.tar.xz" -o /tmp/linux.tar.xz && \
+    echo "${LOAD_KERNEL_SHA256}  /tmp/linux.tar.xz" | sha256sum -c - && \
+    tar -xJf /tmp/linux.tar.xz -C /usr/src/linux --strip-components=1 && \
+    rm /tmp/linux.tar.xz
+
+COPY desktop/scripts/autofdo-gpu-load.c /tmp/autofdo-gpu-load.c
+
+RUN gcc -O2 -Wall -Wextra /tmp/autofdo-gpu-load.c -o /usr/local/bin/autofdo-gpu-load -lEGL -lGLESv2 && \
+    rm /tmp/autofdo-gpu-load.c && \
+    mkdir -p /usr/local/share/autofdo && \
+    ffmpeg -hide_banner -loglevel error \
+      -f lavfi -i testsrc2=size=2560x1440:rate=60 -t 5 \
+      -c:v libx264 -preset ultrafast -crf 28 -pix_fmt yuv420p \
+      /usr/local/share/autofdo/1440p60.mp4
 
 WORKDIR /build
-
-FROM cachyos-base AS autofdo-load
-
-RUN pacman -Syyu --noconfirm --needed stress-ng && \
-    pacman -Scc --noconfirm
-
-WORKDIR /load

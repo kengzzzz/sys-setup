@@ -48,47 +48,30 @@ services:
     image: desktop-kernel-autofdo
     command: [bash, /scripts/build-kernel.sh, autofdo]
 
-  autofdo:
+  kernel-autofdo-profile:
     privileged: true
     pid: host
+    network_mode: host
+    gpus: all
     build:
       context: ..
       dockerfile: desktop/Dockerfile
       target: autofdo-profiler
       args: *build-args
-    image: desktop-autofdo
+    image: desktop-kernel-autofdo-profile
+    environment:
+      NVIDIA_DRIVER_CAPABILITIES: compute,video,graphics,utility
+      PIPEWIRE_RUNTIME_DIR: /run/pipewire
     tmpfs:
       - /build:rw,exec,size=${BUILD_TMPFS_SIZE:-64G},mode=1777
     volumes:
       - ./scripts:/scripts:ro
       - ./profiles:/profiles
       - ./out:/out:ro
+      - /scratch
+      - type: bind
+        source: /run/user/1000/pipewire-0
+        target: /run/pipewire/pipewire-0
+        bind:
+          create_host_path: false
     command: [bash, /scripts/generate-autofdo-profile.sh]
-
-  autofdo-load:
-    build:
-      context: ..
-      dockerfile: desktop/Dockerfile
-      target: autofdo-load
-      args: *build-args
-    image: desktop-autofdo-load
-    cpus: ${AUTOFDO_LOAD_CPUS:-4}
-    volumes:
-      - ./out/autofdo-load:/load
-    command:
-      - nice
-      - -n19
-      - stress-ng
-      - --temp-path=/load
-      - --timeout=${AUTOFDO_LOAD_SECONDS:-1860}
-      - --metrics-brief
-      - --hdd=1
-      - --hdd-bytes=1G
-      - --hdd-opts=wr-seq,rd-rnd,fsync
-      - --iomix=1
-      - --dentry=1
-      - --mmap=1
-      - --fork=1
-      - --sock=1
-      - --udp=1
-      - --epoll=1

@@ -1,10 +1,7 @@
 # Profile input
 
 - File: `kernel.afdo`
-- Collected: 2026-08-20 on `linux-bore-flto-pgo 7.2.0-1`
-- Recipe: `kernel-autofdo` -> boot `linux-profiler` -> `autofdo`
-- Workload: mixed desktop — GPU-intensive gaming, CPU-intensive parallel build, disk I/O, streaming video playback
-- Toolchain: builder runs `pacman -Syu`, not pinned
-- SHA-256: `8729c3755ea4ebc94f824295e03d20f89dedbdd2775c490b48e7d6980f394f9e`
+- Collected: 2026-10-12 on `linux-profiler 7.2.9-2` with `kernel-autofdo-profile`
+- SHA-256: `9fda198784b2ecd9868437cacd8c3d7ef289a5e7dd43c10490824b4764c806e1`
 
 Update this when replacing, then rebuild with `--build`.

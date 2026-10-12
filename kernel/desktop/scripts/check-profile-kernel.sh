@@ -7,7 +7,10 @@ check_profile_kernel() {
     shopt -s nullglob
     packages=("$output_root/$stage"/linux-profiler-dbg-[0-9]*.pkg.tar.zst)
     shopt -u nullglob
-    if [[ ${#packages[@]} != 1 ]]; then
+    if [[ ${#packages[@]} == 0 ]]; then
+        echo "Stage $stage: expected exactly one linux-profiler debug package in $output_root/$stage; found 0. Build it with: docker compose run --rm --build kernel-$stage" >&2
+        return 1
+    elif [[ ${#packages[@]} != 1 ]]; then
         echo "Stage $stage: expected exactly one linux-profiler debug package in $output_root/$stage; found ${#packages[@]}. Archive older versions explicitly." >&2
         return 1
     fi
@@ -16,7 +19,7 @@ check_profile_kernel() {
     tar --use-compress-program=zstd -xOf "${packages[0]}" usr/src/debug/linux-profiler/vmlinux > "$profile_binary"
     binary_release=$(strings "$profile_binary" | sed -n 's/^Linux version \([^ ]*\) .*/\1/p' | sort -u)
     if [[ $binary_release != "$(uname -r)" ]]; then
-        echo "Stage $stage: debug kernel release '$binary_release' does not match booted '$(uname -r)'" >&2
+        echo "Stage $stage: debug kernel release '$binary_release' does not match booted '$(uname -r)'. Install and boot the linux-profiler kernel from $output_root/$stage." >&2
         return 1
     fi
     binary_id=$(readelf -n "$profile_binary" | sed -n 's/.*Build ID: //p' | sort -u)
@@ -40,7 +43,11 @@ print('\n'.join(sorted(ids)))
 PY
     )
     if [[ -z $binary_id || -z $boot_id || $binary_id != "$boot_id" ]]; then
-        echo "Stage $stage: build identity mismatch or unavailable (debug '$binary_id', booted '$boot_id')" >&2
+        echo "Stage $stage: build identity mismatch or unavailable (debug '$binary_id', booted '$boot_id'). Reinstall and boot the kernel from $output_root/$stage." >&2
+        return 1
+    fi
+    if ! readelf -S -W "$profile_binary" | grep -F .debug_info > /dev/null; then
+        echo "Stage $stage: vmlinux in ${packages[0]} has no DWARF debug info" >&2
         return 1
     fi
     printf 'Verified %s: release %s, build ID %s\n' "${packages[0]}" "$binary_release" "$binary_id"

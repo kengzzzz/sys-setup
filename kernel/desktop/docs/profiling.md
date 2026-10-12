@@ -4,28 +4,28 @@
 
 ```sh
 docker compose run --rm --build kernel-autofdo
-# Install the kernel + NVIDIA packages from out/autofdo/, then boot linux-profiler.
-docker compose run --rm --build autofdo
+# Install the kernel + NVIDIA packages from out/autofdo/, add a boot entry, boot linux-profiler.
+docker compose run --rm --build kernel-autofdo-profile
 ```
 
-Keep that build's debug package in `out/autofdo/`. Collection checks it against
-the running kernel, records 30 minutes of your normal workload, and replaces
-`profiles/kernel.afdo`. Back up profiles you want to keep, then rebuild the final
-kernel. If you change perf sysctls temporarily, restore their original values.
+Needs that build's debug package in `out/autofdo/`, broadcast-linux running, and
+the NVIDIA Container Toolkit.
 
-Optional background load (disk, page cache, fork, loopback sockets) to run
-alongside gaming/video during collection:
+Collection checks the booted kernel against the debug `vmlinux`, then records
+`scripts/run-autofdo-workload.sh` with system-wide perf in 5-minute cycles. It
+stops when profile density reaches 50 and a cycle adds under 2% new entries
+(10–60 min), then replaces `profiles/kernel.afdo`. Desktop use during the run is
+profiled too. Each cycle uses ~300 MB of network. `kernel.kptr_restrict=2` is
+lowered to 1 until exit.
+
+Update `profiles/README.md`, then rebuild the final kernel.
+
+Defaults: `-e AUTOFDO_DENSITY=50 -e AUTOFDO_PLATEAU=2 -e AUTOFDO_MAX_MINUTES=60`.
+Smoke test (a few minutes, keeps the profile):
 
 ```sh
-docker compose build autofdo-load autofdo
-docker compose up -d autofdo-load
-docker compose run --rm autofdo
-docker compose down
+docker compose run --rm --build -e AUTOFDO_SMOKE=1 kernel-autofdo-profile
 ```
-
-It is capped by `AUTOFDO_LOAD_CPUS` (default 4) so it doesn't dominate the
-profile, and stops after `AUTOFDO_LOAD_SECONDS` (default 1860). Temp files go
-to `out/autofdo-load/` and are removed on exit.
 
 ## Propeller
 
