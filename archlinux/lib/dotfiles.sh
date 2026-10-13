@@ -226,8 +226,12 @@ install_dotfiles_system_files() {
         install -Dm644 "$dot_dir/$proton_settings" "/$proton_settings"
     fi
 
-    if [[ -f $dot_dir/etc/tmpfiles.d/x3d-cache.conf ]]; then
-        install -Dm644 "$dot_dir/etc/tmpfiles.d/x3d-cache.conf" /etc/tmpfiles.d/x3d-cache.conf
+    if [[ -f $dot_dir/usr/local/bin/steam ]]; then
+        install -m 755 "$dot_dir/usr/local/bin/steam" /usr/local/bin/steam
+    fi
+
+    if [[ -f $dot_dir/etc/tmpfiles.d/x3d-mode.conf ]]; then
+        install -Dm644 "$dot_dir/etc/tmpfiles.d/x3d-mode.conf" /etc/tmpfiles.d/x3d-mode.conf
     fi
 
     chmod 644 /usr/share/wayland-sessions/*.desktop

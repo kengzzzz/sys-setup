@@ -13,6 +13,11 @@ SYSTEM_SERVICES=(
     systemd-timesyncd.service
 )
 
+# cachyos-settings enables these when installed.
+DISABLED_SYSTEM_SERVICES=(
+    ananicy-cpp.service
+)
+
 enable_system_services() {
     section "Enabling services"
     local services=("${SYSTEM_SERVICES[@]}")
@@ -23,6 +28,7 @@ enable_system_services() {
         services+=(fstrim.timer xfs_scrub_all.timer)
     fi
     systemctl enable "${services[@]}"
+    systemctl disable "${DISABLED_SYSTEM_SERVICES[@]}"
 }
 
 configure_container_runtime() {

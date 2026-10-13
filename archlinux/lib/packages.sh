@@ -27,16 +27,17 @@ OFFICIAL_PACKAGES=(
     eza fastfetch freerdp jq bc cpio ripgrep docker bubblewrap gpu-screen-recorder
     pacman-contrib cachyos-settings socat steam proton-cachyos-slr stow tailscale docker-compose
     paru
-    docker-buildx accountsservice python-dbus zed nwg-look pam-u2f
+    docker-buildx accountsservice python-dbus zed nwg-look vesktop-bin pam-u2f
     networkmanager lact fwupd yubikey-manager yubikey-touch-detector wlr-randr openai-codex zenity
     cava claude-code ddcutil mission-center wine clang cmake rustup nasm
     edk2-shell sbctl sbsigntools
     rsync dconf wl-clipboard xdg-utils which
+    rtkit libvirt virt-manager qemu-desktop edk2-ovmf swtpm dnsmasq
 )
 
 AUR_PACKAGES=(
     tokyonight-gtk-theme-git hypr-kblayoutd-bin catppuccin-cursors-mocha
-    broadcast-linux-bin tiny-poe2smoother-bin python-pywal vesktop
+    broadcast-linux-bin tiny-poe2smoother-bin python-pywal
 )
 
 LIVE_PACKAGES=(

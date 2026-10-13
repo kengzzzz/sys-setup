@@ -133,7 +133,7 @@ for pkg in networkmanager quickshell hypridle uwsm brave-origin-bin lact fzf pkg
         exit 1
     fi
 done
-for pkg in systemd-networkd waybar swaync rofi swayidle swaylock helium-browser-bin kolourpaint python-pywal vesktop vesktop-bin vscodium btop mate-polkit gpu-screen-recorder-ui; do
+for pkg in systemd-networkd waybar swaync rofi swayidle swaylock helium-browser-bin kolourpaint python-pywal vesktop vscodium btop mate-polkit gpu-screen-recorder-ui; do
     if printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx "$pkg"; then
         printf 'FAIL: stale package %s should not be in official package list\n' "$pkg" >&2
         exit 1
@@ -156,13 +156,14 @@ for pkg in base-devel sudo cachyos-keyring cachyos-mirrorlist; do
         exit 1
     fi
 done
-for pkg in cmake clang rustup nasm cava claude-code ddcutil hyprsunset mission-center wine ttf-cascadia-code ttf-material-symbols-variable; do
+for pkg in cmake clang rustup nasm cava claude-code ddcutil hyprsunset mission-center wine ttf-cascadia-code ttf-material-symbols-variable \
+    vesktop-bin rtkit libvirt virt-manager qemu-desktop edk2-ovmf swtpm dnsmasq; do
     if ! printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx "$pkg"; then
         printf 'FAIL: installed package %s should be in the repo package list\n' "$pkg" >&2
         exit 1
     fi
 done
-for pkg in broadcast-linux-bin tiny-poe2smoother-bin python-pywal vesktop; do
+for pkg in broadcast-linux-bin tiny-poe2smoother-bin python-pywal; do
     if ! printf '%s\n' "${AUR_PACKAGES[@]}" | grep -qx "$pkg"; then
         printf 'FAIL: installed foreign package %s should be in the AUR package list\n' "$pkg" >&2
         exit 1
@@ -289,6 +290,10 @@ for service in NetworkManager.service systemd-resolved.service lactd.service sys
         exit 1
     fi
 done
+if ! printf '%s\n' "${DISABLED_SYSTEM_SERVICES[@]}" | grep -qx 'ananicy-cpp.service'; then
+    printf 'FAIL: ananicy-cpp should be disabled after cachyos-settings enables it\n' >&2
+    exit 1
+fi
 
 cat >"$tmpdir/pacman.conf" <<'EOF'
 #[multilib-testing]

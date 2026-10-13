@@ -33,3 +33,21 @@ The CSV format is:
 ```text
 timestamp,kernel,label,profile,group,metric,unit,direction,run,value,status
 ```
+
+## Game Frame Rates
+
+For scheduler comparisons, use CS2 with a Workshop "FPS Benchmark" map: vsync off,
+`fps_max 0`, launch option `-condebug`. Per launch, do one warm-up run plus three
+runs, quit, then file `game/csgo/console.log` under the config name. Optional
+MangoHud CSVs (`no_display`, warm-up not logged) go in the same directory; add
+MangoHud only if it doesn't shift the in-game numbers beyond the noise.
+
+```sh
+scripts/cs2-collect.sh bore   # moves the log to results/games/bore/
+python3 scripts/game-report.py results/games/bore results/games/lavd results/games/bpfland
+```
+
+The first directory is the baseline (`--baseline`). Each console log's first
+result is dropped (`--warmup`), and MangoHud logs lose 2 s per end (`--trim`).
+Alternate configs (A B C, C B A) and run one config five times first to learn
+the noise; a change is only "clear" when the run ranges don't overlap.
