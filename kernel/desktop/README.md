@@ -1,6 +1,6 @@
 # Desktop kernel
 
-BORE + FullLTO + AutoFDO for my Ryzen/NVIDIA desktop.
+EEVDF + FullLTO + AutoFDO for my Ryzen/NVIDIA desktop.
 
 ## Build
 
@@ -24,8 +24,8 @@ use `--build` after changing inputs. See [profiling](docs/profiling.md).
 Build prints `Package: /out/kernel/...` (use `./out/kernel/...` on the host):
 
 ```sh
-sudo pacman -U ./out/kernel/linux-bore-flto-pgo-[0-9]*-x86_64.pkg.tar.zst \
-  ./out/kernel/linux-bore-flto-pgo-nvidia-open-[0-9]*-x86_64.pkg.tar.zst
+sudo pacman -U ./out/kernel/linux-eevdf-flto-pgo-[0-9]*-x86_64.pkg.tar.zst \
+  ./out/kernel/linux-eevdf-flto-pgo-nvidia-open-[0-9]*-x86_64.pkg.tar.zst
 ```
 
 Keep only one version in `out/kernel/` for globs, else use exact filenames. Headers are only needed for external

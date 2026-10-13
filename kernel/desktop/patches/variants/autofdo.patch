@@ -1,14 +1,5 @@
 --- a/PKGBUILD
 +++ b/PKGBUILD
-@@ -20,7 +20,7 @@
- # 'eevdf' - select 'EEVDF Scheduler'
- # 'rt' - select EEVDF, but includes a series of realtime patches
- # 'rt-bore' - select Burst-Oriented Response Enhancer, but includes a series of realtime patches
--: "${_cpusched:=cachyos}"
-+: "${_cpusched:=bore}"
- 
- ### Tweak kernel options prior to a build via nconfig
- : "${_makenconfig:=no}"
 @@ -85,7 +85,7 @@
  # - "native" (use compiler autodetection)
  # - "zen4" (Use znver4 compiler optimizations)
@@ -78,7 +69,7 @@
  pkgrel=2
  _srcname=cachyos-${_major}.${_minor}-${_tagrel}
 -pkgdesc='Linux EEVDF + LTO + AutoFDO + Propeller Cachy Sauce Kernel by CachyOS with other patches and improvements.'
-+pkgdesc='Linux BORE + FullLTO + AutoFDO with other patches and improvements by CachyOS.'
++pkgdesc='Linux EEVDF + FullLTO + AutoFDO with other patches and improvements by CachyOS.'
  _kernver="$pkgver-$pkgrel"
  _kernuname="${pkgver}-${_pkgsuffix}"
  arch=('x86_64')

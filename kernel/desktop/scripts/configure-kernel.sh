@@ -66,7 +66,8 @@ for symbol in "${keep[@]}"; do
 done
 
 # Update these expectations together with the stage patches.
-expect SCHED_BORE y
+expect SCHED_BORE undef
+expect SCHED_CLASS_EXT y
 expect LTO_NONE n
 expect AUTOFDO_CLANG y
 case "$stage" in
