@@ -1,6 +1,6 @@
 # Desktop kernel
 
-EEVDF + FullLTO + AutoFDO for my Ryzen/NVIDIA desktop.
+EEVDF + ThinLTO + AutoFDO + Propeller for my Ryzen/NVIDIA desktop.
 
 ## Build
 
@@ -16,16 +16,17 @@ before rebuilding the same version. `.env` sets pins and the tmpfs size (64G).
 
 Edit `patches/` for scheduler/LTO/profile/package choices, and
 `scripts/configure-kernel.sh` for hardware settings and matching assertions.
-Keep collection recipes aligned. Profile inputs live in `profiles/`;
-use `--build` after changing inputs. See [profiling](docs/profiling.md).
+Keep collection recipes aligned. Profile inputs live in `profiles/`; use
+`--build` after changing them. Recollect Propeller on every kernel update. See
+[profiling](docs/profiling.md).
 
 ## Install
 
 Build prints `Package: /out/kernel/...` (use `./out/kernel/...` on the host):
 
 ```sh
-sudo pacman -U ./out/kernel/linux-eevdf-flto-pgo-[0-9]*-x86_64.pkg.tar.zst \
-  ./out/kernel/linux-eevdf-flto-pgo-nvidia-open-[0-9]*-x86_64.pkg.tar.zst
+sudo pacman -U ./out/kernel/linux-eevdf-lto-prop-[0-9]*-x86_64.pkg.tar.zst \
+  ./out/kernel/linux-eevdf-lto-prop-nvidia-open-[0-9]*-x86_64.pkg.tar.zst
 ```
 
 Keep only one version in `out/kernel/` for globs, else use exact filenames. Headers are only needed for external

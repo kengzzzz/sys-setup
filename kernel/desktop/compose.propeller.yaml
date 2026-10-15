@@ -26,23 +26,18 @@ services:
     command: [bash, /scripts/build-kernel.sh, propeller]
 
   propeller:
-    privileged: true
-    pid: host
-    tmpfs:
-      - /build:rw,exec,size=${BUILD_TMPFS_SIZE:-64G},mode=1777
+    extends:
+      file: compose.yaml
+      service: kernel-autofdo-profile
     build:
       context: ..
       dockerfile: desktop/Dockerfile.propeller
       target: propeller-profiler
+      additional_contexts:
+        autofdo-profiler: service:kernel-autofdo-profile
       args:
-        ARCH_IMAGE_DIGEST: ${ARCH_IMAGE_DIGEST:?set ARCH_IMAGE_DIGEST}
-        CACHYOS_REPO_FLAVOR: ${CACHYOS_REPO_FLAVOR:-auto}
         UBUNTU_IMAGE_DIGEST: ${UBUNTU_IMAGE_DIGEST:?set UBUNTU_IMAGE_DIGEST}
         PROPELLER_REF: ${PROPELLER_REF:?set PROPELLER_REF}
         LLVM_GPG_FINGERPRINT: ${LLVM_GPG_FINGERPRINT:?set LLVM_GPG_FINGERPRINT}
     image: desktop-propeller
-    volumes:
-      - ./scripts:/scripts:ro
-      - ./profiles:/profiles
-      - ./out:/out:ro
     command: [bash, /scripts/generate-propeller-profile.sh]

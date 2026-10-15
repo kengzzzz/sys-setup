@@ -18,8 +18,6 @@ stops when profile density reaches 50 and a cycle adds under 2% new entries
 profiled too. Each cycle uses ~300 MB of network. `kernel.kptr_restrict=2` is
 lowered to 1 until exit.
 
-Update `profiles/README.md`, then rebuild the final kernel.
-
 Defaults: `-e AUTOFDO_DENSITY=50 -e AUTOFDO_PLATEAU=2 -e AUTOFDO_MAX_MINUTES=60`.
 Smoke test (a few minutes, keeps the profile):
 
@@ -29,20 +27,20 @@ docker compose run --rm --build -e AUTOFDO_SMOKE=1 kernel-autofdo-profile
 
 ## Propeller
 
-In `.env`, set `COMPOSE_FILE=compose.yaml:compose.propeller.yaml` and uncomment
-the converter pins (`PROPELLER_REF`, `UBUNTU_IMAGE_DIGEST`, `LLVM_GPG_FINGERPRINT`).
-
 ```sh
 docker compose run --rm --build kernel-propeller
-# Install from out/propeller/, boot that linux-profiler build, then:
+# Install the kernel + NVIDIA packages from out/propeller/, boot linux-profiler.
+docker compose run --rm --build -e PROPELLER_SMOKE=1 propeller   # smoke test
 docker compose run --rm --build propeller
 ```
 
-Keep its debug package in `out/propeller/`. This collection recipe uses ThinLTO
-and the AutoFDO input; conversion writes `profiles/propeller_{cc,ld}_profile.txt`.
-For final use, select ThinLTO, `_propeller=yes`, and `_propeller_profiles=yes`
-in `patches/variants/kernel.patch`, update its config assertions, then rebuild.
-Enabling the Compose file alone does not enable final optimization.
+Same requirements, workload and stopping rule as AutoFDO (`PROPELLER_*`
+variables). The profiler is ThinLTO + `kernel.afdo`; output goes to
+`profiles/propeller_{cc,ld}_profile.txt`.
 
-To disable it, undo those recipe/assertion changes and select `compose.yaml`.
-Builds were tested; boot and real profile collection still need a manual check.
+Profiles only match that exact build: recollect after changing the source,
+`kernel.afdo`, clang or config, then build `kernel-builder`.
+
+Path cloning is on ("clone paths" in the cycle summary). To disable it, add
+`path_profile_options { enable_cloning: false }` to `--propeller_options` in
+`scripts/generate-propeller-profile.sh`.

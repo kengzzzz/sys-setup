@@ -19,7 +19,6 @@ FROM cachyos-base AS kernel-toolchain
 ARG KERNEL_GIT_REMOTE=https://github.com/CachyOS/linux-cachyos.git
 ARG KERNEL_REF
 ARG KERNEL_SOURCE_SUBDIR
-ARG PATCH_FILE
 
 RUN pacman -Syyu --noconfirm --needed \
     base-devel sudo git wget bc cpio pahole xmlto kmod libelf python-sphinx pacman-contrib \
@@ -29,6 +28,9 @@ RUN pacman -Syyu --noconfirm --needed \
     useradd -m -G wheel builder && \
     echo "%wheel ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/builder && \
     chmod 0440 /etc/sudoers.d/builder
+
+# Declared after the toolchain so all kernel stages share one clang (Propeller profiles depend on it).
+ARG PATCH_FILE
 
 WORKDIR /src
 

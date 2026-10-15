@@ -9,15 +9,6 @@
  
  # Clang LTO mode, only available with the "llvm" compiler - options are "none", "full" or "thin".
  # ATTENTION - one of three predefined values should be selected!
-@@ -93,7 +93,7 @@
- # "thin: uses multiple threads, faster and uses less memory, may have a lower runtime performance than Full."
- # "thin-dist: Similar to thin, but uses a distributed model rather than in-process: https://discourse.llvm.org/t/rfc-distributed-thinlto-build-for-kernel/85934"
- # "none: disable LTO
--: "${_use_llvm_lto:=thin}"
-+: "${_use_llvm_lto:=full}"
- 
- # Use suffix -lto only when requested by the user
- # yes - enable -lto suffix
 @@ -120,7 +120,7 @@
  # Builds the open nvidia module and package it into a own base
  # This does replace the requirement of nvidia-open-dkms
@@ -40,6 +31,19 @@
  
  # Propeller should be applied, after the kernel is optimized with AutoFDO
  # Workflow:
+@@ -150,10 +150,10 @@
+ # create_llvm_prof --binary=/usr/src/debug/linux-cachyos-rc/vmlinux --profile=propeller.data --format=propeller --propeller_output_module_name --out=propeller_cc_profile.txt --propeller_symorder=propeller_ld_profile.txt
+ # 4. Place the propeller_cc_profile.txt and propeller_ld_profile.txt into the srcdir
+ # 5. Enable _propeller_prefix
+-: "${_propeller:=no}"
++: "${_propeller:=yes}"
+ 
+ # Enable this after the profiles have been generated
+-: "${_propeller_profiles:=no}"
++: "${_propeller_profiles:=yes}"
+ 
+ # ATTENTION: Do not modify after this line
+ _is_lto_kernel() {
 @@ -162,17 +162,12 @@
  }
  
@@ -56,7 +60,7 @@
 -else
 -    _pkgsuffix=cachyos
 -fi
-+_pkgsuffix=eevdf-flto-pgo
++_pkgsuffix=eevdf-lto-prop
  
  pkgbase="linux-$_pkgsuffix"
  _major=7.2
@@ -65,7 +69,7 @@
  pkgrel=1
  _srcname=cachyos-${_major}.${_minor}-${_tagrel}
 -pkgdesc='Linux EEVDF + LTO + AutoFDO + Propeller Cachy Sauce Kernel by CachyOS with other patches and improvements.'
-+pkgdesc='Linux EEVDF + FullLTO + AutoFDO with other patches and improvements by CachyOS.'
++pkgdesc='Linux EEVDF + ThinLTO + AutoFDO + Propeller with other patches and improvements by CachyOS.'
  _kernver="$pkgver-$pkgrel"
  _kernuname="${pkgver}-${_pkgsuffix}"
  arch=('x86_64')

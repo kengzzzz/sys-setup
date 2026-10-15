@@ -62,14 +62,14 @@ dns=192.168.0.3;
 method=link-local'
 assert_eq "$expected_network" "$(render_static_network enp14s0 192.168.0.10/24 192.168.0.1 192.168.0.3)" "static network rendering"
 
-expected_boot='title Arch Linux (linux-eevdf-flto-pgo)
-linux /vmlinuz-linux-eevdf-flto-pgo
-initrd /initramfs-linux-eevdf-flto-pgo.img
+expected_boot='title Arch Linux (linux-eevdf-lto-prop)
+linux /vmlinuz-linux-eevdf-lto-prop
+initrd /initramfs-linux-eevdf-lto-prop.img
 options root=PARTUUID=abc-123 rw nvidia-drm.modeset=1 nvidia-drm.fbdev=1 quiet loglevel=3 systemd.show_status=false'
 ROOT_FS=xfs
-assert_eq "$expected_boot" "$(render_boot_entry linux-eevdf-flto-pgo linux-eevdf-flto-pgo abc-123)" "boot entry rendering"
+assert_eq "$expected_boot" "$(render_boot_entry linux-eevdf-lto-prop linux-eevdf-lto-prop abc-123)" "boot entry rendering"
 ROOT_FS=btrfs
-btrfs_boot=$(render_boot_entry linux-eevdf-flto-pgo linux-eevdf-flto-pgo abc-123)
+btrfs_boot=$(render_boot_entry linux-eevdf-lto-prop linux-eevdf-lto-prop abc-123)
 [[ $btrfs_boot == *'rootflags=subvol=@,compress=zstd:3,discard=async'* ]] || {
     printf 'FAIL: Btrfs boot entry must mount @ with asynchronous TRIM\n' >&2
     exit 1
@@ -78,7 +78,7 @@ btrfs_boot=$(render_boot_entry linux-eevdf-flto-pgo linux-eevdf-flto-pgo abc-123
     printf 'FAIL: root must remain bootable when rollback changes its subvolume ID\n' >&2
     exit 1
 }
-[[ $(render_boot_entry linux-eevdf-flto-pgo linux-eevdf-flto-pgo abc-123 arch-1) == $'title Arch Linux (linux-eevdf-flto-pgo)\nsort-key arch-1\nlinux '* ]] || {
+[[ $(render_boot_entry linux-eevdf-lto-prop linux-eevdf-lto-prop abc-123 arch-1) == $'title Arch Linux (linux-eevdf-lto-prop)\nsort-key arch-1\nlinux '* ]] || {
     printf 'FAIL: boot entry sort key\n' >&2
     exit 1
 }
@@ -180,7 +180,7 @@ if ! printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx 'paru'; then
     exit 1
 fi
 
-PRIMARY_KERNEL=linux-eevdf-flto-pgo
+PRIMARY_KERNEL=linux-eevdf-lto-prop
 make_kernel_fixture() {
     local output=$1 name=$2 version=$3
     mkdir -p "$tmpdir/metadata"
@@ -188,13 +188,13 @@ make_kernel_fixture() {
     tar --zstd -cf "$output" -C "$tmpdir/metadata" .PKGINFO
 }
 mkdir -p "$tmpdir/kernel-only" "$tmpdir/nvidia-only" "$tmpdir/packages"
-make_kernel_fixture "$tmpdir/kernel-only/linux-eevdf-flto-pgo-1-1-x86_64.pkg.tar.zst" "$PRIMARY_KERNEL" 1-1
+make_kernel_fixture "$tmpdir/kernel-only/linux-eevdf-lto-prop-1-1-x86_64.pkg.tar.zst" "$PRIMARY_KERNEL" 1-1
 CUSTOM_KERNEL_PACKAGES_DIR="$tmpdir/kernel-only"
 if (validate_custom_kernel_packages) >/dev/null 2>&1; then
     printf 'FAIL: custom kernel validation accepted a missing NVIDIA package\n' >&2
     exit 1
 fi
-make_kernel_fixture "$tmpdir/nvidia-only/linux-eevdf-flto-pgo-nvidia-open-1-1-x86_64.pkg.tar.zst" "${PRIMARY_KERNEL}-nvidia-open" 1-1
+make_kernel_fixture "$tmpdir/nvidia-only/linux-eevdf-lto-prop-nvidia-open-1-1-x86_64.pkg.tar.zst" "${PRIMARY_KERNEL}-nvidia-open" 1-1
 CUSTOM_KERNEL_PACKAGES_DIR="$tmpdir/nvidia-only"
 if (validate_custom_kernel_packages) >/dev/null 2>&1; then
     printf 'FAIL: custom kernel validation accepted a missing kernel package\n' >&2
@@ -203,8 +203,8 @@ fi
 
 CUSTOM_KERNEL_PACKAGES_DIR="$tmpdir/packages"
 cp "$tmpdir/kernel-only/"*.pkg.tar.zst "$tmpdir/nvidia-only/"*.pkg.tar.zst "$CUSTOM_KERNEL_PACKAGES_DIR/"
-touch "$CUSTOM_KERNEL_PACKAGES_DIR/linux-eevdf-flto-pgo-headers-1-1-x86_64.pkg.tar.zst" \
-    "$CUSTOM_KERNEL_PACKAGES_DIR/linux-eevdf-flto-pgo-dbg-1-1-x86_64.pkg.tar.zst"
+touch "$CUSTOM_KERNEL_PACKAGES_DIR/linux-eevdf-lto-prop-headers-1-1-x86_64.pkg.tar.zst" \
+    "$CUSTOM_KERNEL_PACKAGES_DIR/linux-eevdf-lto-prop-dbg-1-1-x86_64.pkg.tar.zst"
 validate_custom_kernel_packages
 assert_eq "2" "${#CUSTOM_KERNEL_PACKAGES[@]}" "kernel package glob excludes headers and dbg"
 if printf '%s\n' "${CUSTOM_KERNEL_PACKAGES[@]}" | grep -q -- '-headers-\|-dbg-'; then
@@ -212,30 +212,30 @@ if printf '%s\n' "${CUSTOM_KERNEL_PACKAGES[@]}" | grep -q -- '-headers-\|-dbg-';
     exit 1
 fi
 
-touch "$CUSTOM_KERNEL_PACKAGES_DIR/linux-eevdf-flto-pgo-2-1-x86_64.pkg.tar.zst"
+touch "$CUSTOM_KERNEL_PACKAGES_DIR/linux-eevdf-lto-prop-2-1-x86_64.pkg.tar.zst"
 if (validate_custom_kernel_packages) >/dev/null 2>&1; then
     printf 'FAIL: custom kernel validation accepted multiple kernel versions\n' >&2
     exit 1
 fi
-rm "$CUSTOM_KERNEL_PACKAGES_DIR/linux-eevdf-flto-pgo-2-1-x86_64.pkg.tar.zst"
-touch "$CUSTOM_KERNEL_PACKAGES_DIR/linux-eevdf-flto-pgo-nvidia-open-2-1-x86_64.pkg.tar.zst"
+rm "$CUSTOM_KERNEL_PACKAGES_DIR/linux-eevdf-lto-prop-2-1-x86_64.pkg.tar.zst"
+touch "$CUSTOM_KERNEL_PACKAGES_DIR/linux-eevdf-lto-prop-nvidia-open-2-1-x86_64.pkg.tar.zst"
 if (validate_custom_kernel_packages) >/dev/null 2>&1; then
     printf 'FAIL: custom kernel validation accepted multiple NVIDIA versions\n' >&2
     exit 1
 fi
-rm "$CUSTOM_KERNEL_PACKAGES_DIR/linux-eevdf-flto-pgo-nvidia-open-2-1-x86_64.pkg.tar.zst"
-make_kernel_fixture "$CUSTOM_KERNEL_PACKAGES_DIR/linux-eevdf-flto-pgo-nvidia-open-1-1-x86_64.pkg.tar.zst" "${PRIMARY_KERNEL}-nvidia-open" 2-1
+rm "$CUSTOM_KERNEL_PACKAGES_DIR/linux-eevdf-lto-prop-nvidia-open-2-1-x86_64.pkg.tar.zst"
+make_kernel_fixture "$CUSTOM_KERNEL_PACKAGES_DIR/linux-eevdf-lto-prop-nvidia-open-1-1-x86_64.pkg.tar.zst" "${PRIMARY_KERNEL}-nvidia-open" 2-1
 if (validate_custom_kernel_packages) >/dev/null 2>&1; then
     printf 'FAIL: custom kernel validation accepted mismatched package metadata versions\n' >&2
     exit 1
 fi
-make_kernel_fixture "$CUSTOM_KERNEL_PACKAGES_DIR/linux-eevdf-flto-pgo-nvidia-open-1-1-x86_64.pkg.tar.zst" "${PRIMARY_KERNEL}-nvidia-open" 1-1
-printf 'invalid archive' >"$CUSTOM_KERNEL_PACKAGES_DIR/linux-eevdf-flto-pgo-nvidia-open-1-1-x86_64.pkg.tar.zst"
+make_kernel_fixture "$CUSTOM_KERNEL_PACKAGES_DIR/linux-eevdf-lto-prop-nvidia-open-1-1-x86_64.pkg.tar.zst" "${PRIMARY_KERNEL}-nvidia-open" 1-1
+printf 'invalid archive' >"$CUSTOM_KERNEL_PACKAGES_DIR/linux-eevdf-lto-prop-nvidia-open-1-1-x86_64.pkg.tar.zst"
 if (validate_custom_kernel_packages) >/dev/null 2>&1; then
     printf 'FAIL: custom kernel validation accepted a corrupt archive\n' >&2
     exit 1
 fi
-make_kernel_fixture "$CUSTOM_KERNEL_PACKAGES_DIR/linux-eevdf-flto-pgo-nvidia-open-1-1-x86_64.pkg.tar.zst" "${PRIMARY_KERNEL}-nvidia-open" 1-1
+make_kernel_fixture "$CUSTOM_KERNEL_PACKAGES_DIR/linux-eevdf-lto-prop-nvidia-open-1-1-x86_64.pkg.tar.zst" "${PRIMARY_KERNEL}-nvidia-open" 1-1
 
 (
     # shellcheck source=../lib/config.sh
@@ -243,7 +243,7 @@ make_kernel_fixture "$CUSTOM_KERNEL_PACKAGES_DIR/linux-eevdf-flto-pgo-nvidia-ope
     unset CUSTOM_KERNEL_DIR CUSTOM_KERNEL_PACKAGES_DIR
     set_default_config
     assert_eq kernel/desktop "$CUSTOM_KERNEL_DIR" "desktop workspace default"
-    assert_eq linux-eevdf-flto-pgo "$PRIMARY_KERNEL" "package name remains descriptive"
+    assert_eq linux-eevdf-lto-prop "$PRIMARY_KERNEL" "package name remains descriptive"
     SCRIPT_DIR="$ROOT_DIR"
     retry() { printf '%s\n' "$*" >> "$tmpdir/build-commands"; }
     build_custom_kernel_packages >/dev/null
@@ -578,11 +578,11 @@ EOF
 )
 
 (
-    PRIMARY_KERNEL=linux-eevdf-flto-pgo
+    PRIMARY_KERNEL=linux-eevdf-lto-prop
     cache="$tmpdir/kernel-cache"
     mkdir -p "$cache"
-    cp "$tmpdir/packages/linux-eevdf-flto-pgo-1-1-x86_64.pkg.tar.zst" \
-        "$tmpdir/packages/linux-eevdf-flto-pgo-nvidia-open-1-1-x86_64.pkg.tar.zst" "$cache/"
+    cp "$tmpdir/packages/linux-eevdf-lto-prop-1-1-x86_64.pkg.tar.zst" \
+        "$tmpdir/packages/linux-eevdf-lto-prop-nvidia-open-1-1-x86_64.pkg.tar.zst" "$cache/"
     kernel_build_inputs() { printf 'same sources\n'; }
     build_custom_kernel_packages() { touch "$tmpdir/kernel-rebuilt"; }
     printf 'same sources\n' >"$cache/inputs"

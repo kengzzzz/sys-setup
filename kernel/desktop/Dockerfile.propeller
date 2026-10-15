@@ -1,4 +1,3 @@
-ARG ARCH_IMAGE_DIGEST
 ARG UBUNTU_IMAGE_DIGEST
 
 FROM ubuntu@${UBUNTU_IMAGE_DIGEST} AS propeller-builder
@@ -36,24 +35,7 @@ RUN git init && \
           -DCMAKE_BUILD_TYPE=Release && \
     ninja -C build generate_propeller_profiles
 
-FROM archlinux@${ARCH_IMAGE_DIGEST} AS cachyos-base
-
-ARG CACHYOS_REPO_FLAVOR=auto
-
-COPY common/assets/cachyos-signing-key.asc /usr/local/share/cachyos-signing-key.asc
-COPY desktop/scripts/setup-cachyos-repo.sh /usr/local/bin/setup-cachyos-repo
-
-RUN pacman -Syy --noconfirm --needed gcc && \
-    pacman-key --init && \
-    chmod 0755 /usr/local/bin/setup-cachyos-repo && \
-    CACHYOS_REPO_FLAVOR="${CACHYOS_REPO_FLAVOR}" setup-cachyos-repo && \
-    echo -e "\n[multilib]\nInclude = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf && \
-    pacman -Syu --noconfirm cachyos-keyring archlinux-keyring
-
-FROM cachyos-base AS propeller-profiler
-
-RUN pacman -Syyu --noconfirm --needed \
-    perf zstd tar bash binutils python binutils python
+FROM autofdo-profiler AS propeller-profiler
 
 COPY --from=propeller-builder /build/build/propeller/generate_propeller_profiles /usr/local/bin/generate_propeller_profiles
 

@@ -70,15 +70,13 @@ expect SCHED_BORE undef
 expect SCHED_CLASS_EXT y
 expect LTO_NONE n
 expect AUTOFDO_CLANG y
+expect LTO_CLANG_FULL n
+expect LTO_CLANG_THIN y
 case "$stage" in
-    kernel|autofdo)
-        expect LTO_CLANG_FULL y
-        expect LTO_CLANG_THIN n
+    autofdo)
         expect PROPELLER_CLANG n
         ;;
-    propeller)
-        expect LTO_CLANG_FULL n
-        expect LTO_CLANG_THIN y
+    kernel|propeller)
         expect PROPELLER_CLANG y
         ;;
 esac

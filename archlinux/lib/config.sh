@@ -46,7 +46,7 @@ set_default_config() {
     KEYMAP=${KEYMAP:-us}
     EFI_SIZE=${EFI_SIZE:-5G}
     ROOT_FS=${ROOT_FS:-btrfs}
-    PRIMARY_KERNEL=${PRIMARY_KERNEL:-linux-eevdf-flto-pgo}
+    PRIMARY_KERNEL=${PRIMARY_KERNEL:-linux-eevdf-lto-prop}
     FALLBACK_KERNEL=${FALLBACK_KERNEL:-linux-cachyos-lts}
     FALLBACK_NVIDIA_PACKAGE=${FALLBACK_NVIDIA_PACKAGE:-linux-cachyos-lts-nvidia-open}
     CUSTOM_KERNEL_BUILD=${CUSTOM_KERNEL_BUILD:-1}
