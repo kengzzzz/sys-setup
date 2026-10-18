@@ -110,8 +110,9 @@ stow_dotfiles() {
         done
         set -- "${packages[@]}"
         rm -f ~/.zshrc
-        # keep stow folding at icons/default so app-installed icon dirs stay out of the repo
-        mkdir -p ~/.local/share/icons ~/.config/qalculate
+        # keep stow folding at icons/default and systemd/user so app-installed icon dirs and
+        # enable links stay out of the repo
+        mkdir -p ~/.local/share/icons ~/.config/qalculate ~/.config/systemd/user
         install -d -m 700 ~/.gnupg
         stow -n -v "$@"
         stow -R -v "$@"
@@ -203,6 +204,27 @@ restore_lact_config() {
     install -Dm644 "$source_file" /etc/lact/config.yaml
 }
 
+render_cpu_power_sudoers() {
+    local user=$1 mode
+    for mode in eco balanced performance; do
+        printf '%s ALL=(root) NOPASSWD: /usr/local/libexec/cpu-power-apply %s\n' "$user" "$mode"
+    done
+}
+
+install_cpu_power_controls() (
+    section "Installing CPU power controls"
+    local sudoers_file
+    sudoers_file=$(mktemp)
+    trap 'rm -f "$sudoers_file"' EXIT
+
+    render_cpu_power_sudoers "$INSTALL_USER" >"$sudoers_file"
+    visudo -cqf "$sudoers_file"
+    install -Dm755 -o root -g root \
+        "$DOTFILES_DIR/desktop/.config/desktop/scripts/cpu-power-apply" \
+        /usr/local/libexec/cpu-power-apply
+    install -Dm440 -o root -g root "$sudoers_file" /etc/sudoers.d/50-cpu-power
+)
+
 install_dotfiles_system_files() {
     section "Installing dotfiles system files"
     local dot_dir=$DOTFILES_DIR
@@ -229,6 +251,8 @@ install_dotfiles_system_files() {
     if [[ -f $dot_dir/etc/tmpfiles.d/x3d-mode.conf ]]; then
         install -Dm644 "$dot_dir/etc/tmpfiles.d/x3d-mode.conf" /etc/tmpfiles.d/x3d-mode.conf
     fi
+
+    install_cpu_power_controls
 
     chmod 644 /usr/share/wayland-sessions/*.desktop
     seed_greeter_session

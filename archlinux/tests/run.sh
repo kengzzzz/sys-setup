@@ -156,7 +156,7 @@ for pkg in base-devel sudo cachyos-keyring cachyos-mirrorlist; do
         exit 1
     fi
 done
-for pkg in cmake clang rustup nasm cava claude-code ddcutil hyprsunset mission-center wine ttf-cascadia-code ttf-material-symbols-variable \
+for pkg in cmake clang rustup nasm cava claude-code ddcutil hyprsunset resources wine ttf-cascadia-code ttf-material-symbols-variable \
     vesktop-bin rtkit libvirt virt-manager qemu-desktop edk2-ovmf swtpm dnsmasq; do
     if ! printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx "$pkg"; then
         printf 'FAIL: installed package %s should be in the repo package list\n' "$pkg" >&2
@@ -550,6 +550,35 @@ EOF
     printf 'FAIL: dotfiles checks before erasing the disk\n' >&2
     exit 1
 }
+
+(
+    render_cpu_power_sudoers cpu_test >"$tmpdir/cpu-power.sudoers"
+    visudo -cqf "$tmpdir/cpu-power.sudoers"
+    cvtsudoers -f json "$tmpdir/cpu-power.sudoers" >"$tmpdir/cpu-power.json"
+    python3 - "$tmpdir/cpu-power.json" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1]) as stream:
+    policy = json.load(stream)
+
+commands = []
+for user_spec in policy["User_Specs"]:
+    assert user_spec["User_List"] == [{"username": "cpu_test"}], "CPU access must be user-specific"
+    for command_spec in user_spec["Cmnd_Specs"]:
+        assert command_spec["runasusers"] == [{"username": "root"}], "CPU helper must run only as root"
+        assert "runasgroups" not in command_spec, "CPU helper must not allow arbitrary run-as groups"
+        assert command_spec["Options"] == [{"authenticate": False}], "Only passwordless authentication is needed"
+        for command in command_spec["Commands"]:
+            assert set(command) == {"command"}, "Unexpected command permission"
+            commands.append(command["command"])
+
+assert sorted(commands) == sorted(
+    f"/usr/local/libexec/cpu-power-apply {mode}"
+    for mode in ["eco", "balanced", "performance"]
+), "CPU access must allow exactly the three installed helper commands"
+PY
+)
 
 (
     INSTALL_SUDOERS="$tmpdir/sudoers-install"
