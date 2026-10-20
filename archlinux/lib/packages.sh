@@ -22,7 +22,7 @@ OFFICIAL_PACKAGES=(
     qt5ct qt6ct papirus-icon-theme thunar mousepad gvfs tumbler kitty cliphist grim slurp swappy hyprpicker
     pipewire pipewire-pulse pipewire-jack wireplumber pavucontrol blueman brave-origin-bin mpv playerctl qalculate-gtk
     nvidia-utils lib32-nvidia-utils egl-gbm libva-nvidia-driver cpupower
-    zsh zsh-completions zsh-syntax-highlighting imagemagick tesseract tesseract-data-eng tesseract-data-tha ffmpegthumbnailer
+    zsh zsh-completions zsh-syntax-highlighting imagemagick ffmpegthumbnailer
     ttf-jetbrains-mono-nerd ttf-nerd-fonts-symbols-common ttf-ibm-plex ttf-cascadia-code ttf-material-symbols-variable fzf pkgfile
     eza fastfetch freerdp jq bc cpio ripgrep docker bubblewrap gpu-screen-recorder
     pacman-contrib cachyos-settings socat steam proton-cachyos-slr stow tailscale docker-compose
