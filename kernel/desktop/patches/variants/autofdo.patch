@@ -54,10 +54,10 @@
 +_pkgsuffix=profiler
  
  pkgbase="linux-$_pkgsuffix"
- _major=7.2
+ _major=7.3
 @@ -183,7 +178,7 @@
- _tagrel=1
- pkgrel=1
+ _tagrel=2
+ pkgrel=2
  _srcname=cachyos-${_major}.${_minor}-${_tagrel}
 -pkgdesc='Linux EEVDF + LTO + AutoFDO + Propeller Cachy Sauce Kernel by CachyOS with other patches and improvements.'
 +pkgdesc='Linux EEVDF + ThinLTO + AutoFDO with other patches and improvements by CachyOS.'

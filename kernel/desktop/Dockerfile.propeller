@@ -18,9 +18,9 @@ RUN test -n "${PROPELLER_REF}" && \
     gpg --dearmor -o /etc/apt/keyrings/llvm.gpg /tmp/llvm.key && \
     rm /tmp/llvm.key && \
     OS_CODENAME=$(lsb_release -cs) && \
-    echo "deb [signed-by=/etc/apt/keyrings/llvm.gpg] http://apt.llvm.org/${OS_CODENAME}/ llvm-toolchain-${OS_CODENAME}-19 main" > /etc/apt/sources.list.d/llvm.list && \
+    echo "deb [signed-by=/etc/apt/keyrings/llvm.gpg] http://apt.llvm.org/${OS_CODENAME}/ llvm-toolchain-${OS_CODENAME}-23 main" > /etc/apt/sources.list.d/llvm.list && \
     apt-get update && \
-    apt-get install -y clang-19 lldb-19 lld-19 clangd-19
+    apt-get install -y clang-23 lldb-23 lld-23 clangd-23
 
 WORKDIR /build
 
@@ -30,8 +30,8 @@ RUN git init && \
     git checkout FETCH_HEAD && \
     git submodule update --init --recursive && \
     cmake -G Ninja -B build \
-          -DCMAKE_C_COMPILER=clang-19 \
-          -DCMAKE_CXX_COMPILER=clang++-19 \
+          -DCMAKE_C_COMPILER=clang-23 \
+          -DCMAKE_CXX_COMPILER=clang++-23 \
           -DCMAKE_BUILD_TYPE=Release && \
     ninja -C build generate_propeller_profiles
 

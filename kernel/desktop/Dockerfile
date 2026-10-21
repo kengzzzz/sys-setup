@@ -51,8 +51,8 @@ RUN cd "${KERNEL_SOURCE_SUBDIR}" && patch --batch --fuzz=0 -p1 < pkgbuild.patch 
 
 FROM cachyos-base AS autofdo-profiler
 
-ARG LOAD_KERNEL_VERSION=7.2
-ARG LOAD_KERNEL_SHA256=f9fef3d14c0df53819026f4be74459835c2a0b0dcbf5b5bbd9ea19f0829402b3
+ARG LOAD_KERNEL_VERSION=7.3
+ARG LOAD_KERNEL_SHA256=87363c24f10e06321eb362765521094e94471f6bff8bce2d6b3e40f39f004953
 
 RUN pacman -Syyu --noconfirm --needed \
     perf llvm binutils python zstd tar stress-ng rt-tests ripgrep ffmpeg pipewire-audio libglvnd base-devel bc libelf && \
