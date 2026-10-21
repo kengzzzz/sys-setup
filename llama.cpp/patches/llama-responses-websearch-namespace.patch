@@ -2,7 +2,7 @@ diff --git a/tests/test-chat.cpp b/tests/test-chat.cpp
 index d21729111..e65845d44 100644
 --- a/tests/test-chat.cpp
 +++ b/tests/test-chat.cpp
-@@ -1972,6 +1972,55 @@ static void test_convert_responses_to_chatcmpl() {
+@@ -1992,6 +1992,55 @@ static void test_convert_responses_to_chatcmpl() {
          assert_equals(true, tool.at("function").at("strict").get<bool>());
      }
  
@@ -101,7 +101,7 @@ index a6fe3c6ba..0144906c2 100644
                      }},
                      {"id",   item.at("call_id")},
                      {"type", "function"},
-@@ -258,6 +278,29 @@ json server_chat_convert_responses_to_chatcmpl(const json & response_body) {
+@@ -272,6 +292,29 @@ json server_chat_convert_responses_to_chatcmpl(const json & response_body) {
              json chatcmpl_tool;
  
              const std::string type = json_value(resp_tool, "type", std::string());
@@ -151,7 +151,7 @@ diff --git a/tools/server/server-task.cpp b/tools/server/server-task.cpp
 index 0d3beb313..b2e86319c 100644
 --- a/tools/server/server-task.cpp
 +++ b/tools/server/server-task.cpp
-@@ -566,14 +566,20 @@ json server_task_result_cmpl_final::to_json_oaicompat_resp() {
+@@ -558,14 +558,20 @@ json server_task_result_cmpl_final::to_json_oaicompat_resp() {
      }
  
      for (const common_chat_tool_call & tool_call : oaicompat_msg.tool_calls) {
@@ -174,17 +174,18 @@ index 0d3beb313..b2e86319c 100644
      }
  
      std::time_t t = std::time(0);
-@@ -666,7 +672,8 @@ json server_task_result_cmpl_final::to_json_oaicompat_resp_stream() {
+@@ -668,8 +674,9 @@ json server_task_result_cmpl_final::to_json_oaicompat_resp_stream() {
      }
  
      for (const common_chat_tool_call & tool_call : oaicompat_msg.tool_calls) {
+         const size_t item_output_index = output_index++;
 -        const json output_item = {
 +        std::string tool_name;
 +        json output_item = {
              {"id",        "fc_" + tool_call.id},
              {"type",      "function_call"},
              {"status",    "completed"},
-@@ -674,6 +681,10 @@ json server_task_result_cmpl_final::to_json_oaicompat_resp_stream() {
+@@ -677,6 +684,10 @@ json server_task_result_cmpl_final::to_json_oaicompat_resp_stream() {
              {"call_id",   "call_" + tool_call.id},
              {"name",      tool_call.name}
          };
@@ -195,7 +196,7 @@ index 0d3beb313..b2e86319c 100644
          server_sent_events.push_back(json {
              {"event", "response.output_item.done"},
              {"data", json {
-@@ -1271,18 +1282,24 @@ json server_task_result_cmpl_partial::to_json_oaicompat_resp() {
+@@ -1282,19 +1293,25 @@ json server_task_result_cmpl_partial::to_json_oaicompat_resp() {
          }
  
          if (!diff.tool_call_delta.name.empty()) {
@@ -216,6 +217,7 @@ index 0d3beb313..b2e86319c 100644
                  {"event", "response.output_item.added"},
                  {"data", json {
                      {"type",  "response.output_item.added"},
+                     {"output_index", (anthropic_has_reasoning ? 1 : 0) + (text_block_started ? 1 : 0) + diff.tool_call_index},
 -                    {"item", json {
 -                        {"id",        "fc_" + diff.tool_call_delta.id},
 -                        {"arguments", ""},

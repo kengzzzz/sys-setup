@@ -1,7 +1,7 @@
 diff --git a/common/chat.cpp b/common/chat.cpp
 --- a/common/chat.cpp
 +++ b/common/chat.cpp
-@@ -2962,6 +2962,58 @@ static void map_developer_role_to_system(json & messages) {
+@@ -996,6 +996,58 @@ static void map_developer_role_to_system(json & messages) {
      }
  }
  
@@ -60,7 +60,7 @@ diff --git a/common/chat.cpp b/common/chat.cpp
  
  // if first message is system and template does not support it, merge it with next message
  static void system_message_not_supported(json & messages) {
-@@ -3650,6 +3702,10 @@ static common_chat_params common_chat_templates_apply_jinja(const struct common_
+@@ -1349,6 +1401,10 @@ static common_chat_params common_chat_templates_apply_jinja(const struct common_
          workaround::map_developer_role_to_system(params.messages);
      }
  
@@ -74,7 +74,7 @@ diff --git a/common/chat.cpp b/common/chat.cpp
 diff --git a/tests/test-chat.cpp b/tests/test-chat.cpp
 --- a/tests/test-chat.cpp
 +++ b/tests/test-chat.cpp
-@@ -6853,6 +6853,35 @@ static void test_developer_role_to_system_workaround() {
+@@ -7648,6 +7648,35 @@ static void test_developer_role_to_system_workaround() {
          }
          LOG_ERR("Test 1 passed: developer role changed to system\n");
      }
@@ -100,13 +100,13 @@ diff --git a/tests/test-chat.cpp b/tests/test-chat.cpp
 +        inputs.messages = { first_user, later_developer, final_user };
 +
 +        auto params = common_chat_templates_apply(qwen_tmpls.get(), inputs);
-+        assert_contains(params.prompt, "Later developer instruction");
-+        assert_contains(params.prompt, "First user message");
-+        assert_contains(params.prompt, "Final user message");
-+        if (params.prompt.find("Later developer instruction") > params.prompt.find("First user message")) {
++        assert_contains(params.prompt.str(), "Later developer instruction");
++        assert_contains(params.prompt.str(), "First user message");
++        assert_contains(params.prompt.str(), "Final user message");
++        if (params.prompt.str().find("Later developer instruction") > params.prompt.str().find("First user message")) {
 +            throw std::runtime_error("Test failed: developer instruction was not moved before user messages");
 +        }
 +    }
  }
  
- // Verify reasoning-trace retention rules in the DeepSeek-V4 template:
+ // TranslateGemma raises on plain string user content, the specialized handler must rewrite it
