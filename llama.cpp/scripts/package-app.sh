@@ -2,12 +2,15 @@
 set -euo pipefail
 
 build_dir="${1:?build dir required}"
-binary_name="${2:?binary name required}"
-out_dir="${3:?output dir required}"
-llama_commit="${4:?llama commit required}"
+out_dir="${2:?output dir required}"
+llama_commit="${3:?llama commit required}"
+shift 3
+(($#)) || { echo "binary name required" >&2; exit 1; }
 
 mkdir -p "${out_dir}/app" "${out_dir}/meta"
-cp -a "${build_dir}/bin/${binary_name}" "${out_dir}/app/"
+for binary_name in "$@"; do
+  cp -a "${build_dir}/bin/${binary_name}" "${out_dir}/app/"
+done
 find "${build_dir}/bin" -maxdepth 1 -name '*.so*' -exec cp -a {} "${out_dir}/app/" \;
 find "${out_dir}/app" -type f -perm /111 -exec strip --strip-unneeded {} + || true
 find "${out_dir}/app" -type f -name '*.so*' -exec strip --strip-unneeded {} + || true

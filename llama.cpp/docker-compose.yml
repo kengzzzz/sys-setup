@@ -1,16 +1,10 @@
 x-llama-build-args: &llama-build-args
   BASE_CUDA_DEV_CONTAINER: nvidia/cuda@sha256:5626a7d0ecafe3e7c115a452f6b05f20f214f8509346196a7835b205dc5b7fd9 # nvidia/cuda version: 13.4.3-devel-ubuntu24.04
   LLAMA_CPP_REPO: https://github.com/ggml-org/llama.cpp.git
-  LLAMA_CPP_COMMIT: 339f3242c761f16c27e5ffcde1d35dcc31933a55
+  LLAMA_CPP_COMMIT: 1a0b56cec73dac938e0602c974b21dc8e2862830
   CUDA_ARCH: 120a-real
   CUDA_COMPRESSION_MODE: speed
-  GGML_CUDA_FA: "ON"
-  GGML_CUDA_FA_QUANTS: all
-  GGML_CUDA_GRAPHS: "ON"
-  GGML_CUDA_PEER_MAX_BATCH_SIZE: "512"
-  GGML_CUDA_FORCE_MMQ: "ON"
-  GGML_CUDA_FORCE_CUBLAS: "OFF"
-  GGML_LTO: "OFF"
+  GGML_CUDA_FA_QUANTS: q4_0-q4_0;q8_0-q8_0;f16-f16
 
 x-model-volume: &model-volume
   type: bind
@@ -43,7 +37,7 @@ x-llama-service: &llama-service
     - *model-volume
 
 x-tailscale-image: &tailscale-image
-  ghcr.io/tailscale/tailscale@sha256:dbeff02d2337344b351afac203427218c4d0a06c43fc10a865184063498472a6
+  ghcr.io/tailscale/tailscale@sha256:b11583ad2e93e4671128538c88cf11f460444a5d7e449311dd1933a400ab849d # stable 2026-10-20
 
 x-tailscale-volume: &tailscale-volume
   type: bind
@@ -81,6 +75,9 @@ services:
       args: *llama-build-args
     image: llama-server
     container_name: llama-server
+    # no env equivalent; above 0.1, resuming a session after another one restores
+    # it from the host prompt cache instead of re-prefilling everything past the shared prefix
+    command: ["--slot-prompt-similarity", "0.5"]
     depends_on:
       - tailscale
     network_mode: service:tailscale

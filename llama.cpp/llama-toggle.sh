@@ -2,10 +2,10 @@
 
 set -u
 
-project_dir="/home/keng/Documents/sys-setup/llama.cpp"
+project_dir="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 compose=(docker compose --project-directory "$project_dir" -f "$project_dir/docker-compose.yml")
 runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/llama.cpp"
-non_mtp_env="$runtime_dir/non-mtp.env"
+mtp_env="$runtime_dir/mtp.env"
 
 notify() {
     notify-send --app-name="llama.cpp" "$1" "$2"
@@ -19,7 +19,7 @@ current_mode() {
     if ! is_running; then
         printf 'stopped\n'
     elif docker inspect llama-server --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
-        | grep -q '^LLAMA_ARG_SPEC_'; then
+        | grep -q '^LLAMA_ARG_SPEC_TYPE='; then
         printf 'MTP\n'
     else
         printf 'non-MTP\n'
@@ -30,12 +30,12 @@ start() {
     local mode="$1"
     local env_file="$project_dir/.env"
 
-    if [[ "$mode" == "non-MTP" ]]; then
+    if [[ "$mode" == "MTP" ]]; then
         mkdir -p "$runtime_dir"
         chmod 700 "$runtime_dir"
         umask 077
-        grep -v '^LLAMA_ARG_SPEC_' "$project_dir/.env" > "$non_mtp_env"
-        env_file="$non_mtp_env"
+        cat "$project_dir/.env" "$project_dir/mtp.env" > "$mtp_env"
+        env_file="$mtp_env"
     fi
 
     if is_running && ! "${compose[@]}" down; then

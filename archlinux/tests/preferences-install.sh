@@ -59,7 +59,7 @@ runuser() {
     "$@"
 }
 
-mkdir -p "$TEST_USER_HOME/.local/share/icons" "$TEST_USER_HOME/.config/qalculate"
+mkdir -p "$TEST_USER_HOME/.local/share/icons" "$TEST_USER_HOME/.config/qalculate" "$TEST_USER_HOME/.config/opencode"
 stow -n -d "$DOTFILES_DIR" -t "$TEST_USER_HOME" "${ARCH_STOW_PACKAGES[@]}"
 stow -R -d "$DOTFILES_DIR" -t "$TEST_USER_HOME" "${ARCH_STOW_PACKAGES[@]}"
 stow -n --no-folding -d "$DOTFILES_DIR" -t "$TEST_USER_HOME" workstation

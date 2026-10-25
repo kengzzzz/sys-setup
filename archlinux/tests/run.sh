@@ -126,7 +126,7 @@ grep -q '^# -auth      \[success=1 default=bad\]     pam_unix.so' "$tmpdir/syste
 }
 
 for pkg in networkmanager quickshell hypridle uwsm brave-origin-bin lact fzf pkgfile \
-    ripgrep fwupd yubikey-manager yubikey-touch-detector wlr-randr pipewire-jack openai-codex zenity zed \
+    ripgrep fwupd yubikey-manager yubikey-touch-detector wlr-randr pipewire-jack openai-codex opencode zenity zed \
     rsync dconf wl-clipboard xdg-utils which proton-cachyos-slr mousepad; do
     if ! printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx "$pkg"; then
         printf 'FAIL: %s should be in official package list\n' "$pkg" >&2
@@ -263,7 +263,7 @@ for package in docs applications swayidle swaylock xsettingsd etc usr utils gpu-
         exit 1
     fi
 done
-for package in hypr quickshell uwsm zshrc broadcast-linux claude hypr-kblayoutd qalculate zed mpv; do
+for package in hypr quickshell uwsm zshrc broadcast-linux claude hypr-kblayoutd qalculate zed mpv opencode; do
     if ! printf '%s\n' "${ARCH_STOW_PACKAGES[@]}" | grep -qx "$package"; then
         printf 'FAIL: %s should be in the Arch Stow allowlist\n' "$package" >&2
         exit 1

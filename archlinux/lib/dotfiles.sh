@@ -18,11 +18,13 @@ ARCH_STOW_PACKAGES=(
     kitty
     mpv
     nwg-look
+    opencode
     pipewire
     qalculate
     qt6ct
     quickshell
     ssh
+    steam
     uwsm
     vesktop
     zed
@@ -112,7 +114,7 @@ stow_dotfiles() {
         rm -f ~/.zshrc
         # keep stow folding at icons/default and systemd/user so app-installed icon dirs and
         # enable links stay out of the repo
-        mkdir -p ~/.local/share/icons ~/.config/qalculate ~/.config/systemd/user
+        mkdir -p ~/.local/share/icons ~/.config/qalculate ~/.config/opencode ~/.config/systemd/user
         install -d -m 700 ~/.gnupg
         stow -n -v "$@"
         stow -R -v "$@"

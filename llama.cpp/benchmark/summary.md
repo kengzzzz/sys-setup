@@ -1,50 +1,86 @@
-# Non-MTP vs MTP benchmark
+# Coding-agent benchmark
 
-- Timestamp (UTC): `2026-09-19T07:47:10Z`
-- Host: `x86_64`
-- CPU threads: `32`
-- GPU: `NVIDIA GeForce RTX 5080, 16303 MiB, 615.71.09`
-- Model: `/models/hf-home/hub/models--unsloth--Qwen3.8-27B-GGUF/snapshots/4ca720788d1e01f1bff70c033e0d0028fd02e502/Qwen3.8-27B-UD-Q2_K_XL.gguf`
-- Image: `llama-server:latest`
-- Image revision: `b23701f77d47dad9de834d59ebfcbe25c9e8b46f`
+- Timestamp (UTC): `2026-10-25T13:39:19Z`
+- GPU: `NVIDIA GeForce RTX 5080, 16303 MiB, 615.78.08`
+- Image revision: `1a0b56cec73dac938e0602c974b21dc8e2862830`
+- Workload prefix: OpenCode system prompt + tool schemas (`benchmark/fixtures/opencode-prefix.json`)
+- Agent session: 3000-token tool results appended until ~65536 tokens
+- Decode: 2 x 9 short chat prompts, 192 tokens, temperature 0
 
-## Configuration
+## Arms
 
-- Both arms use the same image, model, prompts, and runtime settings.
-- Non-MTP removes every `LLAMA_ARG_SPEC_*` environment variable.
-- MTP settings: `LLAMA_ARG_SPEC_DRAFT_BACKEND_SAMPLING=on`, `LLAMA_ARG_SPEC_DRAFT_CACHE_TYPE_K=q4_0`, `LLAMA_ARG_SPEC_DRAFT_CACHE_TYPE_V=q4_0`, `LLAMA_ARG_SPEC_DRAFT_N_MAX=2`, `LLAMA_ARG_SPEC_TYPE=draft-mtp`
-- Repetitions per prompt: `3`
-- Predict tokens per request: `192`
-- Temperature: `0.0`; seed: `42`; prompt cache: disabled.
+- `baseline-default`: the old stack, a llama.cpp 339f324 image with the Codex patches running JonathanColetti IQ2_M with q8_0 K/V, 100K context, ubatch 64, default slot similarity and MTP off
+- `baseline-mtp`: old stack with MTP on, which was the previous default
+- `oldimage-default`: old image 339f324 with the new model, `.env` and Compose command, to isolate the effect of the llama.cpp update
+- `default`: new image 1a0b56c with `.env`, the shipped default
+- `mtp`: new image with `.env` + `mtp.env` (MTP on, 80K context)
 
-## Aggregate comparison
+## Settings
 
-| Metric | Non-MTP | MTP | Delta |
-| --- | ---: | ---: | ---: |
-| End-to-end throughput | 67.74 tok/s | 105.10 tok/s | +55.14% |
-| Server decode throughput | 72.27 tok/s | 117.29 tok/s | +62.30% |
-| Total wall time | 70.28 s | 45.30 s | -35.54% |
-| Idle process VRAM | 11,534 MiB | 12,512 MiB | +978 MiB |
-| Peak process VRAM | 11,746 MiB | 12,742 MiB | +996 MiB |
-| MTP draft acceptance | n/a | 0.732 | n/a |
+| Metric | `baseline-default` | `baseline-mtp` | `oldimage-default` | `default` | `mtp` |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| model file | `Qwen3.8-27B-Uncensored-IQ2_M.gguf` | `Qwen3.8-27B-Uncensored-IQ2_M.gguf` | `Qwen3.8-27B-GSQ-RCO-IQ3_XXS-mtp.gguf` | `Qwen3.8-27B-GSQ-RCO-IQ3_XXS-mtp.gguf` | `Qwen3.8-27B-GSQ-RCO-IQ3_XXS-mtp.gguf` |
+| `LLAMA_ARG_CTX_SIZE` | `102400` | `102400` | `131072` | `131072` | `81920` |
+| `LLAMA_ARG_UBATCH` | `64` | `64` | `512` | `512` | `512` |
+| `LLAMA_ARG_N_PARALLEL` | `1` | `1` | `1` | `1` | `1` |
+| `LLAMA_ARG_CACHE_TYPE_K` | `q8_0` | `q8_0` | `q4_0` | `q4_0` | `q4_0` |
+| `LLAMA_ARG_CACHE_TYPE_V` | `q8_0` | `q8_0` | `q4_0` | `q4_0` | `q4_0` |
+| `LLAMA_ARG_CACHE_RAM` | `-` | `-` | `16384` | `16384` | `16384` |
+| `LLAMA_ARG_SPEC_TYPE` | `-` | `draft-mtp` | `-` | `-` | `draft-mtp` |
+| `command` | `` | `` | `--slot-prompt-similarity 0.5` | `--slot-prompt-similarity 0.5` | `--slot-prompt-similarity 0.5` |
 
-## Per-prompt server throughput
+## Results
 
-| Prompt | Non-MTP | MTP | Delta | MTP accept rate |
-| --- | ---: | ---: | ---: | ---: |
-| `code_python` | 71.84 tok/s | 120.60 tok/s | +67.87% | 0.773 |
-| `code_cpp` | 71.79 tok/s | 122.80 tok/s | +71.05% | 0.796 |
-| `explain_concept` | 71.94 tok/s | 109.75 tok/s | +52.57% | 0.658 |
-| `summarize` | 71.75 tok/s | 118.27 tok/s | +64.85% | 0.750 |
-| `qa_factual` | 71.95 tok/s | 126.26 tok/s | +75.48% | 0.832 |
-| `translation` | 71.90 tok/s | 124.30 tok/s | +72.89% | 0.808 |
-| `creative_short` | 71.96 tok/s | 101.08 tok/s | +40.47% | 0.564 |
-| `stepwise_math` | 71.93 tok/s | 133.45 tok/s | +85.53% | 0.911 |
-| `long_code_review` | 71.56 tok/s | 102.78 tok/s | +43.62% | 0.592 |
+| Metric | `baseline-default` | `baseline-mtp` | `oldimage-default` | `default` | `mtp` |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Decode, short prompts (tok/s) | 62.81 | 98.79 | 60.16 | 60.25 | 97.92 |
+| MTP draft acceptance | - | 0.669 | - | - | 0.701 |
+| Prefill 8K cold (tok/s) | 1227 | 1175 | 1828 | 1808 | 1734 |
+| Prefill 32K cold (tok/s) | 1128 | 1085 | 1661 | 1654 | 1579 |
+| Prefill 64K cold (tok/s) | 998 | 957 | 1427 | 1430 | 1354 |
+| Prefill 120K cold (tok/s) | - | - | 1148 | 1156 | - |
+| Time to first token 8K cold (s) | 6.84 | 7.14 | 4.59 | 4.64 | 4.84 |
+| Time to first token 32K cold (s) | 28.39 | 29.51 | 19.28 | 19.36 | 20.28 |
+| Time to first token 64K cold (s) | 67.08 | 69.90 | 46.90 | 46.79 | 49.40 |
+| Time to first token 120K cold (s) | - | - | 110.88 | 110.14 | - |
+| Decode at 8K depth (tok/s) | 59.52 | 112.91 | 55.65 | 56.06 | 101.30 |
+| Decode at 32K depth (tok/s) | 52.04 | 86.28 | 48.84 | 48.98 | 88.18 |
+| Decode at 64K depth (tok/s) | 44.39 | 73.09 | 41.80 | 42.22 | 66.76 |
+| Decode at 120K depth (tok/s) | - | - | 32.94 | 32.95 | - |
+| Agent loop: steps | 16 | 16 | 16 | 16 | 16 |
+| Agent loop: cache hit ratio | 0.909 | 0.909 | 0.909 | 0.909 | 0.909 |
+| Agent loop: mean new tokens per step | 3298 | 3298 | 3298 | 3298 | 3298 |
+| Agent loop: mean prefill per step (s) | 3.40 | 3.56 | 2.41 | 2.42 | 2.53 |
+| Agent loop: max prefill per step (s) | 5.22 | 5.50 | 3.70 | 3.72 | 3.90 |
+| Resume after title request: tokens re-processed | 717 | 717 | 717 | 717 | 717 |
+| Resume after title request: prefill (s) | 0.94 | 1.00 | 0.71 | 0.70 | 0.73 |
+| New session, shared prefix: tokens processed | 60 | 60 | 508 | 508 | 508 |
+| Switch back to first session: tokens re-processed | 53959 | 53959 | 25 | 25 | 25 |
+| Switch back to first session: prefill (s) | 54.83 | 57.24 | 0.16 | 0.16 | 0.18 |
+| Early-history edit (miss): tokens re-processed | 53962 | 53962 | 54448 | 54448 | 54448 |
+| Early-history edit (miss): prefill (s) | 54.94 | 57.26 | 38.73 | 38.85 | 40.72 |
+| Idle process VRAM (MiB) | 13,286 | 14,552 | 12,724 | 12,722 | 12,822 |
+| Peak process VRAM (MiB) | 13,306 | 14,590 | 13,024 | 13,022 | 13,138 |
+| Peak GPU used incl. desktop (MiB) | 14,046 | 15,299 | 13,742 | 13,806 | 13,841 |
+| Min free VRAM during run (MiB) | 2,257 | 1,004 | 2,561 | 2,497 | 2,462 |
+
+## Decode per prompt (tok/s)
+
+| Prompt | `baseline-default` | `baseline-mtp` | `oldimage-default` | `default` | `mtp` |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `code_python` | 62.45 | 101.15 | 60.25 | 59.90 | 98.59 |
+| `code_cpp` | 62.48 | 99.28 | 60.05 | 59.91 | 91.97 |
+| `explain_concept` | 62.51 | 87.51 | 59.33 | 59.97 | 88.97 |
+| `summarize` | 62.38 | 109.52 | 59.39 | 59.95 | 106.84 |
+| `qa_factual` | 62.56 | 105.97 | 59.73 | 59.94 | 105.61 |
+| `translation` | 62.44 | 95.90 | 59.75 | 60.08 | 94.22 |
+| `creative_short` | 62.28 | 81.78 | 59.36 | 60.25 | 88.26 |
+| `stepwise_math` | 62.45 | 100.41 | 60.16 | 59.81 | 97.39 |
+| `refactor` | 62.42 | 97.86 | 59.95 | 59.48 | 106.88 |
 
 ## Notes
 
-- End-to-end throughput includes local HTTP round-trip time; server decode throughput uses llama.cpp timing data.
-- VRAM is sampled from the llama-server process during model load and inference, not from total GPU usage.
-- The two arms run sequentially: non-MTP first, then MTP.
-- Raw artifacts are under `benchmark/results/`.
+- Prefill rows force a cache miss by changing the first tool description; decode at depth is measured on the same request.
+- Agent rows come from llama.cpp `timings`. Tokens re-processed is `prompt_n`; everything else was reused from the slot, a context checkpoint, or the host prompt cache.
+- VRAM is sampled every 0.25 s. GPU used includes the desktop, so free VRAM is what other applications have left.
+- Raw results and each arm's exact server environment are in `benchmark/results/`.

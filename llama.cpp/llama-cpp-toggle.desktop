@@ -2,7 +2,7 @@
 Type=Application
 Name=Toggle llama.cpp
 Comment=Start, stop, or switch the llama.cpp MTP mode
-Exec=/home/keng/Documents/sys-setup/llama.cpp/llama-toggle.sh
+Exec=/home/keng/Data/sys-setup/llama.cpp/llama-toggle.sh
 Icon=system-run
 Terminal=false
 Categories=Utility;
