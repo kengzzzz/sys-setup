@@ -56,15 +56,15 @@
  pkgbase="linux-$_pkgsuffix"
  _major=7.3
 @@ -183,7 +178,7 @@
- _tagrel=2
- pkgrel=2
+ _tagrel=1
+ pkgrel=1
  _srcname=cachyos-${_major}.${_minor}-${_tagrel}
 -pkgdesc='Linux EEVDF + LTO + AutoFDO + Propeller Cachy Sauce Kernel by CachyOS with other patches and improvements.'
 +pkgdesc='Linux EEVDF + ThinLTO + AutoFDO with other patches and improvements by CachyOS.'
  _kernver="$pkgver-$pkgrel"
  _kernuname="${pkgver}-${_pkgsuffix}"
  arch=('x86_64')
-@@ -292,7 +287,18 @@
+@@ -293,7 +288,18 @@
  
  _die() { error "$@" ; exit 1; }
  
@@ -83,7 +83,7 @@
      cd "$_srcname"
  
      echo "Setting version..."
-@@ -463,7 +469,6 @@
+@@ -464,7 +470,6 @@
  
      if [ "$_autofdo" = "yes" ] && [ -n "$_autofdo_profile_name" ]; then
          echo "AutoFDO profile has been found..."
@@ -91,7 +91,7 @@
      fi
  
      # Propeller Optimization
-@@ -473,7 +478,6 @@
+@@ -474,7 +479,6 @@
  
      if [ "$_propeller" = "yes" ] && [ "$_propeller_profiles" = "yes" ]; then
          echo "Propeller profile has been found..."
@@ -99,7 +99,7 @@
      fi
  
      ### Optionally use running kernel's config
-@@ -546,6 +550,7 @@
+@@ -547,6 +551,7 @@
  }
  
  build() {
@@ -107,7 +107,7 @@
      cd "$_srcname"
      make "${BUILD_FLAGS[@]}" -j"$(nproc)" all
  
-@@ -589,6 +594,7 @@
+@@ -590,6 +595,7 @@
  }
  
  _package() {

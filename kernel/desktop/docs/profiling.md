@@ -41,6 +41,6 @@ variables). The profiler is ThinLTO + `kernel.afdo`; output goes to
 Profiles only match that exact build: recollect after changing the source,
 `kernel.afdo`, clang or config, then build `kernel-builder`.
 
-Path cloning is on ("clone paths" in the cycle summary). To disable it, add
-`path_profile_options { enable_cloning: false }` to `--propeller_options` in
-`scripts/generate-propeller-profile.sh`.
+Path cloning is off (`path_profile_options { enable_cloning: false }` in
+`--propeller_options` in `scripts/generate-propeller-profile.sh`); "clone paths"
+in the cycle summary should be 0. Drop that option to turn it back on.

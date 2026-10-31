@@ -51,7 +51,7 @@ convert() {
     local perfdata=$1 prefix=$2 blocks
     # ThinLTO matches cc entries per module; without names, same-named statics collide.
     if ! generate_propeller_profiles --binary="$profile_binary" --profile="$perfdata" \
-        --propeller_options='output_module_name: true' \
+        --propeller_options='output_module_name: true path_profile_options { enable_cloning: false }' \
         --cc_profile="${prefix}_cc_profile.txt" --ld_profile="${prefix}_ld_profile.txt" \
         > "$prefix.log" 2>&1; then
         tail -n 20 "$prefix.log" >&2
