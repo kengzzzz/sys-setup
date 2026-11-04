@@ -22,6 +22,11 @@ Extra desktop preferences live in the private `workstation` Stow package. After
 changing GUI preferences, run `python archlinux/scripts/workstation-preferences.py save`.
 The installer applies saved dconf and history-free Qalculate preferences automatically.
 
+When the dotfiles include `utils/scripts/setup-tenant.sh`, the installer builds
+[gamebridge](https://github.com/kengzzzz/gamebridge) and runs that script, so Steam
+and the other game launchers run as a separate `tenant` user. Set tenant's Steam
+compatibility tool, shader processing and download options by hand after the first login.
+
 ## WSL2 + Debian
 
 Run in elevated PowerShell:

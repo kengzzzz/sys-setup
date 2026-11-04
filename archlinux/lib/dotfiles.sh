@@ -9,6 +9,7 @@ ARCH_STOW_PACKAGES=(
     desktop
     fastfetch
     fontconfig
+    gamebridge
     gnupg
     gtk-3.0
     gtk-4.0
@@ -32,6 +33,8 @@ ARCH_STOW_PACKAGES=(
 )
 
 DEFAULT_BROWSER_DESKTOP=brave-origin.desktop
+GAMEBRIDGE_REPO=https://github.com/kengzzzz/gamebridge.git
+GAMEBRIDGE_BUILD_DIR=.cache/sys-setup/gamebridge
 
 configure_makepkg() {
     section "Configuring makepkg.conf"
@@ -114,7 +117,7 @@ stow_dotfiles() {
         rm -f ~/.zshrc
         # keep stow folding at icons/default and systemd/user so app-installed icon dirs and
         # enable links stay out of the repo
-        mkdir -p ~/.local/share/icons ~/.config/qalculate ~/.config/opencode ~/.config/systemd/user
+        mkdir -p ~/.local/bin ~/.local/share/icons ~/.config/qalculate ~/.config/opencode ~/.config/systemd/user
         install -d -m 700 ~/.gnupg
         stow -n -v "$@"
         stow -R -v "$@"
@@ -273,6 +276,35 @@ seed_greeter_session() {
     chown greeter:greeter "$cache_dir/lastsession-path"
 }
 
+tenant_setup_script() {
+    printf '%s/utils/scripts/setup-tenant.sh' "$DOTFILES_DIR"
+}
+
+build_gamebridge() {
+    [[ -f $(tenant_setup_script) ]] || return 0
+    section "Building gamebridge"
+    runuser -u "$INSTALL_USER" -- bash -lc '
+        set -euo pipefail
+        src=$HOME/$2
+        rm -rf "$src"
+        git clone --depth=1 -- "$1" "$src"
+        cd "$src"
+        rustup toolchain install
+        cargo build --release --locked
+    ' bash "$GAMEBRIDGE_REPO" "$GAMEBRIDGE_BUILD_DIR"
+}
+
+setup_tenant_user() {
+    local script user_home
+    script=$(tenant_setup_script)
+    [[ -f $script ]] || return 0
+    section "Setting up the tenant user"
+    user_home=$(getent passwd "$INSTALL_USER" | cut -d: -f6)
+    [[ -n $user_home ]] || die "home directory not found for $INSTALL_USER"
+    GAMEBRIDGE_BIN="$user_home/$GAMEBRIDGE_BUILD_DIR/target/release/gamebridge" bash "$script"
+    rm -rf "${user_home:?}/$GAMEBRIDGE_BUILD_DIR"
+}
+
 run_dotfiles_install() {
     [[ ${ENABLE_DOTFILES:-1} == 1 ]] || {
         warn "dotfiles install disabled"
@@ -286,6 +318,8 @@ run_dotfiles_install() {
     run_step default-browser configure_default_browser
     run_step dotfiles-system-files install_dotfiles_system_files
     run_step lact restore_lact_config
+    run_step gamebridge build_gamebridge
+    run_step tenant-user setup_tenant_user
     run_step user-services enable_target_user_services
     run_step workstation-preferences apply_workstation_preferences
 }

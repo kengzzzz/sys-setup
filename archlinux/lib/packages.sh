@@ -33,6 +33,7 @@ OFFICIAL_PACKAGES=(
     edk2-shell sbctl sbsigntools
     rsync dconf wl-clipboard xdg-utils which
     rtkit libvirt virt-manager qemu-desktop edk2-ovmf swtpm dnsmasq
+    xwayland-satellite passt
 )
 
 AUR_PACKAGES=(

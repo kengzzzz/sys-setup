@@ -88,6 +88,18 @@ enable_target_user_services() {
         "$keyboard_wants/cliphist@text.service" "$keyboard_wants/cliphist@image.service"
     chown -h "$INSTALL_USER:$group" "$ssh_wants/yubikey-touch-detector.socket" \
         "$broadcast_wants/yubikey-touch-detector.service"
+    [[ -e $dotfile_units/gamebridge-wayland.service ]] || return 0
+    local pipewire_wants="$dotfile_units/pipewire.service.wants" unit
+    install -d -o "$INSTALL_USER" -g "$group" "$pipewire_wants"
+    for unit in gamebridge-wayland.service gamebridge-notify.service gamebridge-tray.service; do
+        link_user_unit "$user_home" "$unit" graphical-session.target "$dotfile_units"
+        chown -h "$INSTALL_USER:$group" "$keyboard_wants/$unit"
+    done
+    # gamebridge-pulse BindsTo pipewire, so default.target alone leaves it dead after a PipeWire restart.
+    link_user_unit "$user_home" gamebridge-pulse.service pipewire.service "$dotfile_units"
+    link_user_unit "$user_home" gamebridge-shortcuts.path default.target "$dotfile_units"
+    chown -h "$INSTALL_USER:$group" "$pipewire_wants/gamebridge-pulse.service" \
+        "$broadcast_wants/gamebridge-shortcuts.path"
 }
 
 install_user_dirs() {
