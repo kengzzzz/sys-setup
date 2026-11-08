@@ -9,15 +9,16 @@
  
  # Clang LTO mode, only available with the "llvm" compiler - options are "none", "full" or "thin".
  # ATTENTION - one of three predefined values should be selected!
-@@ -120,14 +120,14 @@
+@@ -120,7 +120,7 @@
  # Builds the open nvidia module and package it into a own base
  # This does replace the requirement of nvidia-open-dkms
  # Use this only if you have Turing+ GPU
 -: "${_build_nvidia_open:=no}"
 +: "${_build_nvidia_open:=yes}"
  
- # Builds the r8125 module and package it into its own package
- # Replaces requirement for r8125-dkms
+ # Builds the closed nvidia module of the 580xx legacy driver and package it into a own base
+ # This does replace the requirement of nvidia-580xx-dkms
+@@ -132,7 +132,7 @@
  : "${_build_r8125:=no}"
  
  # Build a debug package with non-stripped vmlinux
@@ -26,7 +27,7 @@
  
  # Enable AUTOFDO_CLANG for the first compilation to create a kernel, which can be used for profiling
  # Workflow:
-@@ -137,7 +137,7 @@
+@@ -142,7 +142,7 @@
  # 3. Profile the kernel and convert the profile, see Generating the Profile for AutoFDO
  # 4. Put the profile into the sourcedir
  # 5. Run kernel build again with the _autofdo_profile_name path to profile specified
@@ -35,7 +36,7 @@
  
  # Name for the AutoFDO profile
  : "${_autofdo_profile_name:=}"
-@@ -162,17 +162,12 @@
+@@ -167,17 +167,12 @@
  }
  
  _is_ci_build() {
@@ -55,7 +56,7 @@
  
  pkgbase="linux-$_pkgsuffix"
  _major=7.3
-@@ -183,7 +178,7 @@
+@@ -188,7 +183,7 @@
  _tagrel=1
  pkgrel=1
  _srcname=cachyos-${_major}.${_minor}-${_tagrel}
@@ -64,7 +65,7 @@
  _kernver="$pkgver-$pkgrel"
  _kernuname="${pkgver}-${_pkgsuffix}"
  arch=('x86_64')
-@@ -293,7 +288,18 @@
+@@ -308,7 +303,18 @@
  
  _die() { error "$@" ; exit 1; }
  
@@ -80,10 +81,10 @@
 +
  prepare() {
 +    _set_profile_build_flags
-     cd "$_srcname"
- 
-     echo "Setting version..."
-@@ -464,7 +470,6 @@
+     if [ "$_build_nvidia_580xx" = "yes" ]; then
+         sh "${_nv_580xx_pkg}.run" --extract-only
+     fi
+@@ -483,7 +489,6 @@
  
      if [ "$_autofdo" = "yes" ] && [ -n "$_autofdo_profile_name" ]; then
          echo "AutoFDO profile has been found..."
@@ -91,7 +92,7 @@
      fi
  
      # Propeller Optimization
-@@ -474,7 +479,6 @@
+@@ -493,7 +498,6 @@
  
      if [ "$_propeller" = "yes" ] && [ "$_propeller_profiles" = "yes" ]; then
          echo "Propeller profile has been found..."
@@ -99,7 +100,7 @@
      fi
  
      ### Optionally use running kernel's config
-@@ -547,6 +551,7 @@
+@@ -566,6 +570,7 @@
  }
  
  build() {
@@ -107,7 +108,7 @@
      cd "$_srcname"
      make "${BUILD_FLAGS[@]}" -j"$(nproc)" all
  
-@@ -590,6 +595,7 @@
+@@ -614,6 +619,7 @@
  }
  
  _package() {
