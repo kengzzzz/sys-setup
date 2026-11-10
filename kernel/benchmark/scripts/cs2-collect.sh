@@ -6,7 +6,7 @@ if [[ ! $config =~ ^[A-Za-z0-9._+-]+$ ]]; then
     echo "Usage: $0 <config name>" >&2
     exit 2
 fi
-log=${CS2_CONSOLE_LOG:-$HOME/.local/share/Steam/steamapps/common/Counter-Strike Global Offensive/game/csgo/console.log}
+log=${CS2_CONSOLE_LOG:-/home/tenant/.local/share/Steam/steamapps/common/Counter-Strike Global Offensive/game/csgo/console.log}
 if pgrep -x cs2 > /dev/null; then
     echo 'Quit CS2 first.' >&2
     exit 1
@@ -16,7 +16,12 @@ fi
 dest="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)/results/games/$config"
 mkdir -p "$dest"
 target="$dest/$(date +%Y%m%dT%H%M%S).log"
-mv -n "$log" "$target"
+if [[ -w $(dirname -- "$log") ]]; then
+    mv -n "$log" "$target"
+else
+    cp -n -- "$log" "$target"
+    tenant-run --wait rm -f -- "$log"
+fi
 
 ops=$(cat /sys/kernel/sched_ext/root/ops 2> /dev/null || true)
 x3d=$(cat /sys/bus/platform/drivers/amd_x3d_vcache/*/amd_x3d_mode 2> /dev/null || echo n/a)
