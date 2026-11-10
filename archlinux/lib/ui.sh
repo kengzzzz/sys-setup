@@ -18,7 +18,6 @@ setting_label() {
         PRIMARY_KERNEL) echo "Primary kernel" ;;
         FALLBACK_KERNEL) echo "Fallback kernel" ;;
         FALLBACK_NVIDIA_PACKAGE) echo "Fallback NVIDIA package" ;;
-        BOOT_ENTRY) echo "Primary boot entry" ;;
         NETWORK_INTERFACE) echo "Network interface" ;;
         NETWORK_ADDRESS) echo "Static address" ;;
         NETWORK_GATEWAY) echo "Gateway" ;;

@@ -17,9 +17,9 @@ BASE_PACKAGES=(
 
 OFFICIAL_PACKAGES=(
     gnu-free-fonts noto-fonts noto-fonts-cjk noto-fonts-emoji noto-fonts-extra
-    greetd greetd-tuigreet hyprland swaybg swayimg hypridle hyprsunset
+    greetd hyprland swaybg swayimg hypridle hyprsunset
     quickshell uwsm xdg-desktop-portal-hyprland xdg-desktop-portal-gtk gnome-keyring seahorse
-    qt5ct qt6ct papirus-icon-theme thunar mousepad gvfs tumbler kitty cliphist grim slurp swappy hyprpicker
+    qt5ct qt6ct papirus-icon-theme thunar mousepad gvfs tumbler kitty cliphist grim slurp satty hyprpicker
     pipewire pipewire-pulse pipewire-jack wireplumber pavucontrol blueman brave-origin-bin mpv playerctl qalculate-gtk
     nvidia-utils lib32-nvidia-utils egl-gbm libva-nvidia-driver cpupower
     zsh zsh-completions zsh-syntax-highlighting imagemagick ffmpegthumbnailer
@@ -27,7 +27,7 @@ OFFICIAL_PACKAGES=(
     eza fastfetch freerdp jq bc cpio ripgrep docker bubblewrap gpu-screen-recorder
     pacman-contrib cachyos-settings socat steam proton-cachyos-slr stow tailscale docker-compose
     paru
-    docker-buildx accountsservice python-dbus zed nwg-look vesktop-bin pam-u2f
+    docker-buildx accountsservice python python-dbus zed nwg-look vesktop-bin pam-u2f
     networkmanager lact fwupd yubikey-manager yubikey-touch-detector wlr-randr openai-codex opencode zenity
     cava claude-code ddcutil resources wine clang cmake rustup nasm
     edk2-shell sbctl sbsigntools

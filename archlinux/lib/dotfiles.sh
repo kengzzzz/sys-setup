@@ -239,8 +239,10 @@ install_dotfiles_system_files() {
         update-ca-trust
     fi
 
-    install -Dm644 "$dot_dir/etc/greetd/config.toml" /etc/greetd/config.toml
-    install -Dm644 "$dot_dir/etc/tuigreet/config.toml" /etc/tuigreet/config.toml
+    "$dot_dir/etc/greetd/install.sh"
+    if [[ -x $dot_dir/etc/limine/install.sh ]]; then
+        "$dot_dir/etc/limine/install.sh"
+    fi
     mkdir -p /usr/share/wayland-sessions /usr/local/bin
     cp -r "$dot_dir/usr/share/wayland-sessions/." /usr/share/wayland-sessions/
 
@@ -260,20 +262,6 @@ install_dotfiles_system_files() {
     install_cpu_power_controls
 
     chmod 644 /usr/share/wayland-sessions/*.desktop
-    seed_greeter_session
-}
-
-seed_greeter_session() {
-    local session=/usr/share/wayland-sessions/hyprland-uwsm.desktop
-    local cache_dir=/var/cache/tuigreet
-
-    [[ -f $session ]] || die "greeter session not found: $session"
-    [[ ! -e $cache_dir/lastsession-path ]] || return 0
-    # tuigreet otherwise starts the first session, plain Hyprland, which
-    # bypasses uwsm's graphical-session.target and ~/.config/uwsm/env.
-    install -d -o greeter -g greeter "$cache_dir"
-    printf '%s' "$session" >"$cache_dir/lastsession-path"
-    chown greeter:greeter "$cache_dir/lastsession-path"
 }
 
 tenant_setup_script() {

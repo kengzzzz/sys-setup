@@ -10,9 +10,10 @@ Boot an Arch ISO in UEFI mode with Secure Boot disabled and networking connected
 curl -fsSL https://raw.githubusercontent.com/kengzzzz/sys-setup/main/archlinux.sh | bash
 ```
 
-Sets up my workstation: Hyprland/Quickshell, systemd-boot, static networking,
+Sets up my workstation: Hyprland/Quickshell, Limine, static networking,
 YubiKey authentication, dotfiles, and a custom kernel with a CachyOS LTS fallback.
-Uses Btrfs with `discard=async` and automatic package snapshots with EFI backups.
+Uses Btrfs with `discard=async` and automatic package snapshots that boot from
+the Limine menu.
 See [recovery](archlinux/RECOVERY.md).
 
 From a local checkout, use `bash archlinux/install.sh --dry-run` to preview the

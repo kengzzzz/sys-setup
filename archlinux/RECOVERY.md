@@ -1,11 +1,12 @@
 # Btrfs recovery
 
-Default: Btrfs with `compress=zstd:3,discard=async`; periodic TRIM is disabled.
-Snapper takes snapshots before and after package changes, including matching
-EFI files saved in `/.bootbackup`.
+Default: Btrfs with `compress=zstd:3,discard=async`. Periodic TRIM is disabled.
+Snapper takes snapshots before and after package changes. limine-snapper-sync
+adds the "before" and manual snapshots to the Limine menu, with the kernel and
+initramfs each one needs.
 
-Rollback restores `/` and `/boot`. Home, logs, caches, container data, and
-snapshot history stay unchanged.
+A restore replaces `/` and its boot files. Home, logs, caches, container data,
+and snapshot history stay unchanged.
 
 ## Snapshots
 
@@ -13,48 +14,54 @@ snapshot history stay unchanged.
 sudo snapper -c root list
 ```
 
-For a manual snapshot, with no package transaction running:
+For a manual snapshot:
 
 ```sh
-sudo sys-setup-boot-backup &&
 sudo snapper -c root create --description 'Before manual changes' --cleanup-algorithm number
 ```
 
 ## Restore
 
-Boot an Arch ISO in UEFI mode. Run as root with `btrfs-progs`, `rsync`, and a
-checkout of this repository available. Replace device paths and `NUMBER` with
-your root partition, EFI partition, and a known working pre-update snapshot.
+1. In the Limine menu, open Arch Linux, then Snapshots, and pick a known working
+   snapshot from before the update.
+2. It boots read-only with a temporary writable layer in RAM. Changes made there
+   are lost at reboot.
+3. Check that it works, then run `sudo limine-snapper-restore` and pick the same
+   snapshot.
+4. Reboot.
 
-Inspect snapshots:
-
-```sh
-lsblk -f
-mount -o ro,subvol=@snapshots /dev/nvme0n1p2 /mnt
-ls /mnt
-cat /mnt/NUMBER/info.xml
-umount /mnt
-```
-
-With both target partitions unmounted, run from the repository directory:
-
-```sh
-bash archlinux/scripts/rollback.sh /dev/nvme0n1p2 /dev/nvme0n1p1 NUMBER
-```
-
-Reboot after successful recovery. The previous root remains at
-`@before-rollback-TIMESTAMP`, with its EFI files in `.boot-before-rollback-TIMESTAMP`.
-Remove these preserved roots manually after confirming recovery; Snapper cleanup
-does not manage them.
+The replaced root stays in the menu as a "backup" snapshot entry, so a restore
+can be undone the same way.
 
 Fix the failed update before upgrading again. Keep independent backups on
-another disk or NAS; local snapshots do not protect against disk failure.
+another disk or NAS. Local snapshots do not protect against disk failure.
+
+## Limine does not start
+
+Pick "UEFI OS" in the firmware boot menu. It is a copy of Limine at
+`EFI/BOOT/BOOTX64.EFI`. If that fails too, boot an Arch ISO in UEFI mode and
+run this, with your root and EFI partitions from `lsblk -f`:
+
+```sh
+mount -o subvol=@ /dev/nvme0n1p2 /mnt
+mount /dev/nvme0n1p1 /mnt/boot
+arch-chroot /mnt limine-update
+```
 
 ## Failed installation
 
 The failure menu retries the step after a fix, skipping finished steps. Running
 the installer again reuses the answers, YubiKeys and kernel saved in
 `/root/sys-setup-state`. Log: `/tmp/sys-setup-arch-install.log`.
+
+## Login screen
+
+The Quickshell greeter only takes a YubiKey PIN. No attempt is used until the
+key is plugged in.
+
+If it breaks, it shows a "press Enter to try again" screen. Ctrl+Alt+Backspace
+forces that screen. Ctrl+Alt+F2 opens a text login. Logs:
+`journalctl -b -t qs-greeter`.
 
 ## Locked out
 
@@ -68,4 +75,5 @@ sed -i "s|\$|:$cred|" /mnt/etc/Yubico/u2f_mappings
 ```
 
 or run `arch-chroot /mnt passwd keng` and uncomment the `pam_unix.so` auth line
-in `/mnt/etc/pam.d/system-auth`.
+in `/mnt/etc/pam.d/system-auth`. The login screen only takes a YubiKey, so sign
+in with the password on a text login (Ctrl+Alt+F2).

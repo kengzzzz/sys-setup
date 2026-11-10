@@ -14,7 +14,6 @@ SETTINGS_VARS=(
     PRIMARY_KERNEL
     FALLBACK_KERNEL
     FALLBACK_NVIDIA_PACKAGE
-    BOOT_ENTRY
     NETWORK_INTERFACE
     NETWORK_ADDRESS
     NETWORK_GATEWAY
@@ -59,7 +58,6 @@ set_default_config() {
     YUBIKEY_SYSTEM_AUTH=${YUBIKEY_SYSTEM_AUTH:-1}
     DOTFILES_REPO=${DOTFILES_REPO:-git@github.com:kengzzzz/dotfiles.git}
     DOTFILES_BRANCH=${DOTFILES_BRANCH:-main}
-    BOOT_ENTRY=${BOOT_ENTRY:-default.conf}
     ENABLE_DOTFILES=${ENABLE_DOTFILES:-1}
     ENABLE_WORKLOAD_PACKAGES=${ENABLE_WORKLOAD_PACKAGES:-1}
     RESTORE_LACT_CONFIG=${RESTORE_LACT_CONFIG:-0}
@@ -162,10 +160,6 @@ setting_error() {
             [[ $value =~ ^[a-z0-9][a-z0-9._+-]*$ ]] || echo "invalid package name"
             [[ $name != FALLBACK_KERNEL || $value != "$PRIMARY_KERNEL" ]] || echo "must differ from the primary kernel"
             ;;
-        BOOT_ENTRY)
-            [[ $value =~ ^[A-Za-z0-9._+-]+\.conf$ ]] || echo "must be a simple .conf filename"
-            [[ $value != "${FALLBACK_KERNEL}.conf" ]] || echo "the fallback kernel already uses this filename"
-            ;;
         NETWORK_INTERFACE)
             [[ $value =~ ^[A-Za-z0-9_.-]+$ ]] || echo "invalid interface name"
             ;;
@@ -211,7 +205,7 @@ setting_warning() {
 }
 
 system_errors() {
-    [[ -d /sys/firmware/efi ]] || echo "UEFI firmware is required for systemd-boot; boot the ISO in UEFI mode"
+    [[ -d /sys/firmware/efi ]] || echo "UEFI firmware is required for Limine; boot the ISO in UEFI mode"
     if secure_boot_enabled; then
         echo "Secure Boot must be disabled; this installer does not enroll or sign Secure Boot keys"
     fi

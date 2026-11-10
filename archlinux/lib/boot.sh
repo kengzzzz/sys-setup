@@ -12,40 +12,44 @@ secure_boot_enabled() {
     return 1
 }
 
-render_loader_config() {
-    local default_entry=$1
-
-    cat <<EOF
-default $default_entry
-timeout 3
-console-mode max
-editor no
-EOF
-}
-
-render_boot_entry() {
-    local title=$1
-    local kernel=$2
-    local root_partuuid=$3
-    local sort_key=${4:-}
+kernel_cmdline() {
+    local root_partuuid=$1
     local root_flags=''
     if [[ ${ROOT_FS:-btrfs} == btrfs ]]; then
         root_flags=' rootflags=subvol=@,compress=zstd:3,discard=async'
     fi
+    printf 'root=PARTUUID=%s rw%s nvidia-drm.modeset=1 nvidia-drm.fbdev=1 quiet loglevel=3 systemd.show_status=false video=DP-3:3440x1440@240 fbcon=nodefer libahci.ignore_sss=1 usbcore.initial_descriptor_timeout=500\n' \
+        "$root_partuuid" "$root_flags"
+}
 
-    printf 'title Arch Linux (%s)\n' "$title"
-    [[ -z $sort_key ]] || printf 'sort-key %s\n' "$sort_key"
+# limine-entry-tool and limine-snapper-sync both read this file. The command
+# line is explicit because the tool would otherwise copy /proc/cmdline, which
+# is the live ISO's during installation.
+render_limine_defaults() {
+    local root_partuuid=$1
+
     cat <<EOF
-linux /vmlinuz-$kernel
-initrd /initramfs-$kernel.img
-options root=PARTUUID=$root_partuuid rw$root_flags nvidia-drm.modeset=1 nvidia-drm.fbdev=1 quiet loglevel=3 systemd.show_status=false
+ESP_PATH="/boot"
+UEFI_BOOT_ORDER=first
+ENABLE_LIMINE_FALLBACK=yes
+FIND_BOOTLOADERS=no
+KERNEL_CMDLINE[default]=$(kernel_cmdline "$root_partuuid")
+BOOT_ORDER="$PRIMARY_KERNEL, *, *fallback, Snapshots"
+EOF
+    [[ ${ROOT_FS:-btrfs} == btrfs ]] || return 0
+    cat <<'EOF'
+
+SNAPPER_CONFIG_NAME="root"
+ROOT_SUBVOLUME_PATH="/@"
+ROOT_SNAPSHOTS_PATH="/@snapshots"
+EXCLUDE_SNAPSHOT_TYPES="post"
 EOF
 }
 
 firmware_boot_entry() {
     local efi_partuuid=$1
     efibootmgr -v 2>/dev/null | awk -v uuid="${efi_partuuid,,}" '
-        /^Boot[0-9A-Fa-f]{4}/ && index(tolower($0), uuid) && index(tolower($0), "systemd-bootx64.efi") {
+        /^Boot[0-9A-Fa-f]{4}/ && index(tolower($0), uuid) && index(tolower($0), "limine_x64.efi") {
             print substr($1, 5, 4)
             exit
         }'
@@ -62,15 +66,15 @@ boot_order_with_first() {
 }
 
 # Firmware may keep booting the disk the installer came from, and its fallback
-# entries are all named "UEFI OS". Put systemd-boot first and force the next boot.
+# entries are all named "UEFI OS". Put Limine first and force the next boot.
 prefer_installed_system() {
     section "Setting the firmware boot order"
     local efi_partuuid entry order
     efi_partuuid=$(blkid -s PARTUUID -o value "$EFI_PARTITION")
     entry=$(firmware_boot_entry "$efi_partuuid")
     if [[ -z $entry ]]; then
-        efibootmgr --create --disk "$TARGET_DEVICE" --part 1 --label 'Linux Boot Manager' \
-            --loader '\EFI\systemd\systemd-bootx64.efi' >/dev/null || true
+        efibootmgr --create --disk "$TARGET_DEVICE" --part 1 --label Limine \
+            --loader '\EFI\limine\limine_x64.efi' >/dev/null || true
         entry=$(firmware_boot_entry "$efi_partuuid")
     fi
     if [[ -z $entry ]]; then
@@ -81,14 +85,5 @@ prefer_installed_system() {
     efibootmgr --bootorder "$(boot_order_with_first "$entry" "$order")" >/dev/null \
         || warn "could not change the firmware boot order"
     efibootmgr --bootnext "$entry" >/dev/null || warn "could not set the next boot entry"
-    log "firmware boots Boot$entry (Linux Boot Manager) first"
-}
-
-write_boot_entry() {
-    local title=$1
-    local kernel=$2
-    local output=$3
-    local sort_key=${4:-}
-
-    render_boot_entry "$title" "$kernel" "$ROOT_PARTUUID" "$sort_key" >"$output"
+    log "firmware boots Boot$entry (Limine) first"
 }

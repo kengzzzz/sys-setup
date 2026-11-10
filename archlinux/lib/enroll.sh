@@ -394,7 +394,7 @@ dotfiles_problems() {
     for package in "${ARCH_STOW_PACKAGES[@]}"; do
         [[ -d $dir/$package ]] || echo "warning: dotfiles have no '$package' Stow package; it will be skipped"
     done
-    for file in etc/greetd/config.toml etc/tuigreet/config.toml; do
+    for file in etc/greetd/config.toml etc/greetd/install.sh; do
         [[ -f $dir/$file ]] || echo "error: dotfiles lack $file"
     done
     [[ -d $dir/usr/share/wayland-sessions ]] || echo "error: dotfiles lack usr/share/wayland-sessions"

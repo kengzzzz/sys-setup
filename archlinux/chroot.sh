@@ -61,6 +61,8 @@ configure_mkinitcpio() {
     sed -i 's/#COMPRESSION_OPTIONS=()/COMPRESSION_OPTIONS=(--ultra -22 -T0)/' /etc/mkinitcpio.conf
     grep -q '^COMPRESSION="zstd"' /etc/mkinitcpio.conf || echo 'COMPRESSION="zstd"' >>/etc/mkinitcpio.conf
     grep -q '^COMPRESSION_OPTIONS=' /etc/mkinitcpio.conf || echo 'COMPRESSION_OPTIONS=(--ultra -22 -T0)' >>/etc/mkinitcpio.conf
+    sed -i 's/^MODULES=()$/MODULES=(nvidia? nvidia_modeset? nvidia_uvm? nvidia_drm?)/' /etc/mkinitcpio.conf
+    grep -q '^MODULES=(nvidia' /etc/mkinitcpio.conf || echo 'MODULES=(nvidia? nvidia_modeset? nvidia_uvm? nvidia_drm?)' >>/etc/mkinitcpio.conf
 }
 
 configure_sudoers() {
@@ -69,19 +71,30 @@ configure_sudoers() {
 }
 
 install_bootloader() {
-    section "Installing systemd-boot"
-    mkinitcpio -P
+    section "Installing Limine"
+    # Kernels go under /boot/<machine-id>, so the ID must exist before the hook runs.
+    [[ -s /etc/machine-id ]] || systemd-machine-id-setup
+    render_limine_defaults "$ROOT_PARTUUID" >/etc/default/limine
+    local packages=(limine limine-mkinitcpio-hook)
+    [[ $ROOT_FS != btrfs ]] || packages+=(limine-snapper-sync inotify-tools)
+    retry pacman -S --noconfirm --needed "${packages[@]}"
+    if [[ $ROOT_FS == btrfs ]]; then
+        # The hook comes with limine-mkinitcpio-hook, so it can only be added now.
+        grep -q '^HOOKS=.* sd-btrfs-overlayfs' /etc/mkinitcpio.conf \
+            || sed -i '/^HOOKS=/s/ filesystems / filesystems sd-btrfs-overlayfs /' /etc/mkinitcpio.conf
+        grep -q '^HOOKS=.* filesystems sd-btrfs-overlayfs' /etc/mkinitcpio.conf \
+            || die "could not add sd-btrfs-overlayfs to HOOKS in /etc/mkinitcpio.conf"
+    fi
+    limine-update
+    # Left by the kernel installs that ran before the Limine hook existed.
+    rm -f /boot/vmlinuz-* /boot/initramfs-*.img
+    # Limine sets LoaderFeatures, which makes systemd write a seed Limine never reads into /boot/loader.
+    systemctl mask systemd-boot-random-seed.service
+    [[ -s /boot/EFI/limine/limine_x64.efi ]] || die "Limine is missing from the ESP"
     local kernel
     for kernel in "$PRIMARY_KERNEL" "$FALLBACK_KERNEL"; do
-        [[ -s /boot/vmlinuz-$kernel && -s /boot/initramfs-$kernel.img ]] \
-            || die "boot artifacts missing for $kernel"
+        grep -q "^[[:space:]]*//$kernel\$" /boot/limine.conf || die "no Limine entry for $kernel"
     done
-    bootctl install
-    mkdir -p /boot/loader/entries
-    render_loader_config "$BOOT_ENTRY" >/boot/loader/loader.conf
-    # Without sort keys systemd-boot lists the fallback first (file names, descending).
-    write_boot_entry "$PRIMARY_KERNEL" "$PRIMARY_KERNEL" "/boot/loader/entries/$BOOT_ENTRY" arch-1
-    write_boot_entry "$FALLBACK_KERNEL" "$FALLBACK_KERNEL" "/boot/loader/entries/${FALLBACK_KERNEL}.conf" arch-2
 }
 
 main() {

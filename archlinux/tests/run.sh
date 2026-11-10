@@ -62,26 +62,35 @@ dns=192.168.0.3;
 method=link-local'
 assert_eq "$expected_network" "$(render_static_network enp14s0 192.168.0.10/24 192.168.0.1 192.168.0.3)" "static network rendering"
 
-expected_boot='title Arch Linux (linux-eevdf-lto-prop)
-linux /vmlinuz-linux-eevdf-lto-prop
-initrd /initramfs-linux-eevdf-lto-prop.img
-options root=PARTUUID=abc-123 rw nvidia-drm.modeset=1 nvidia-drm.fbdev=1 quiet loglevel=3 systemd.show_status=false'
+expected_cmdline='root=PARTUUID=abc-123 rw nvidia-drm.modeset=1 nvidia-drm.fbdev=1 quiet loglevel=3 systemd.show_status=false video=DP-3:3440x1440@240 fbcon=nodefer libahci.ignore_sss=1 usbcore.initial_descriptor_timeout=500'
 ROOT_FS=xfs
-assert_eq "$expected_boot" "$(render_boot_entry linux-eevdf-lto-prop linux-eevdf-lto-prop abc-123)" "boot entry rendering"
+assert_eq "$expected_cmdline" "$(kernel_cmdline abc-123)" "kernel command line"
+[[ $(PRIMARY_KERNEL=linux-eevdf-lto-prop render_limine_defaults abc-123) != *SNAPPER* ]] || {
+    printf 'FAIL: XFS installs have no snapshot boot entries\n' >&2
+    exit 1
+}
 ROOT_FS=btrfs
-btrfs_boot=$(render_boot_entry linux-eevdf-lto-prop linux-eevdf-lto-prop abc-123)
-[[ $btrfs_boot == *'rootflags=subvol=@,compress=zstd:3,discard=async'* ]] || {
-    printf 'FAIL: Btrfs boot entry must mount @ with asynchronous TRIM\n' >&2
+btrfs_cmdline=$(kernel_cmdline abc-123)
+[[ $btrfs_cmdline == *'rootflags=subvol=@,compress=zstd:3,discard=async'* ]] || {
+    printf 'FAIL: Btrfs command line must mount @ with asynchronous TRIM\n' >&2
     exit 1
 }
-[[ $btrfs_boot != *subvolid=* ]] || {
-    printf 'FAIL: root must remain bootable when rollback changes its subvolume ID\n' >&2
+[[ $btrfs_cmdline != *subvolid=* ]] || {
+    printf 'FAIL: root must remain bootable when a snapshot restore changes its subvolume ID\n' >&2
     exit 1
 }
-[[ $(render_boot_entry linux-eevdf-lto-prop linux-eevdf-lto-prop abc-123 arch-1) == $'title Arch Linux (linux-eevdf-lto-prop)\nsort-key arch-1\nlinux '* ]] || {
-    printf 'FAIL: boot entry sort key\n' >&2
-    exit 1
-}
+expected_limine='ESP_PATH="/boot"
+UEFI_BOOT_ORDER=first
+ENABLE_LIMINE_FALLBACK=yes
+FIND_BOOTLOADERS=no
+KERNEL_CMDLINE[default]=root=PARTUUID=abc-123 rw rootflags=subvol=@,compress=zstd:3,discard=async nvidia-drm.modeset=1 nvidia-drm.fbdev=1 quiet loglevel=3 systemd.show_status=false video=DP-3:3440x1440@240 fbcon=nodefer libahci.ignore_sss=1 usbcore.initial_descriptor_timeout=500
+BOOT_ORDER="linux-eevdf-lto-prop, *, *fallback, Snapshots"
+
+SNAPPER_CONFIG_NAME="root"
+ROOT_SUBVOLUME_PATH="/@"
+ROOT_SNAPSHOTS_PATH="/@snapshots"
+EXCLUDE_SNAPSHOT_TYPES="post"'
+assert_eq "$expected_limine" "$(PRIMARY_KERNEL=linux-eevdf-lto-prop render_limine_defaults abc-123)" "Limine defaults rendering"
 assert_eq $'btrfs-progs\nsnapper\nsnap-pac\nrsync' "$(filesystem_packages)" "Btrfs recovery packages"
 ROOT_FS=xfs
 assert_eq xfsprogs "$(filesystem_packages)" "XFS filesystem package"
@@ -325,20 +334,15 @@ BootOrder: 0002,0001,0004,0000
 Boot0000* UiApp	FvVol(7cb8bdc9-f8eb-4f34-aaea-3ee4af6516a1)/FvFile(462caa21-7614-4503-836e-8ab6f4662331)
 Boot0001* UEFI OS	HD(1,GPT,11111111-aaaa-4bbb-8ccc-000000000001,0x800,0xa00000)/\EFI\BOOT\BOOTX64.EFI
 Boot0002* UEFI OS	HD(2,GPT,22222222-aaaa-4bbb-8ccc-000000000002,0x800,0x10000)/\EFI\BOOT\BOOTX64.EFI
-Boot0004* Linux Boot Manager	HD(1,GPT,11111111-AAAA-4BBB-8CCC-000000000001,0x800,0xa00000)/\EFI\systemd\systemd-bootx64.efi
+Boot0003* Linux Boot Manager	HD(1,GPT,11111111-aaaa-4bbb-8ccc-000000000001,0x800,0xa00000)/\EFI\systemd\systemd-bootx64.efi
+Boot0004* Limine	HD(1,GPT,11111111-AAAA-4BBB-8CCC-000000000001,0x800,0xa00000)/\EFI\limine\limine_x64.efi
 EOF
 }
-assert_eq 0004 "$(firmware_boot_entry 11111111-aaaa-4bbb-8ccc-000000000001)" "systemd-boot entry on the target ESP"
-assert_eq "" "$(firmware_boot_entry 22222222-aaaa-4bbb-8ccc-000000000002)" "fallback entries are not systemd-boot"
+assert_eq 0004 "$(firmware_boot_entry 11111111-aaaa-4bbb-8ccc-000000000001)" "Limine entry on the target ESP"
+assert_eq "" "$(firmware_boot_entry 22222222-aaaa-4bbb-8ccc-000000000002)" "fallback entries are not Limine"
 unset -f efibootmgr
 assert_eq 0004,0002,0001,0000 "$(boot_order_with_first 0004 0002,0001,0004,0000)" "new system first in boot order"
 assert_eq 0004 "$(boot_order_with_first 0004 '')" "boot order without other entries"
-
-expected_loader='default default.conf
-timeout 3
-console-mode max
-editor no'
-assert_eq "$expected_loader" "$(render_loader_config default.conf)" "loader config rendering"
 
 mkdir -p "$tmpdir/sysfs/0000:01:00.0"
 printf '0x10de\n' >"$tmpdir/sysfs/0000:01:00.0/vendor"
@@ -537,11 +541,11 @@ EOF
     STATE_DIR="$tmpdir/dotfiles-state"
     ENABLE_DOTFILES=1
     RESTORE_LACT_CONFIG=0
-    mkdir -p "$STATE_DIR/dotfiles/etc/greetd" "$STATE_DIR/dotfiles/etc/tuigreet"
+    mkdir -p "$STATE_DIR/dotfiles/etc/greetd"
     for package in "${ARCH_STOW_PACKAGES[@]}"; do
         [[ $package == zed ]] || mkdir -p "$STATE_DIR/dotfiles/$package"
     done
-    touch "$STATE_DIR/dotfiles/etc/greetd/config.toml" "$STATE_DIR/dotfiles/etc/tuigreet/config.toml"
+    touch "$STATE_DIR/dotfiles/etc/greetd/config.toml" "$STATE_DIR/dotfiles/etc/greetd/install.sh"
     problems=$(dotfiles_problems)
     [[ $problems == *"warning: dotfiles have no 'zed' Stow package"* ]]
     [[ $problems == *"error: dotfiles lack usr/share/wayland-sessions"* ]]
