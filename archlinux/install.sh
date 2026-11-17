@@ -52,13 +52,17 @@ Options:
   --config FILE     Source installer variables from FILE before prompts.
   --kernel-packages-dir DIR
                     Install existing custom kernel packages from DIR.
+  --patched-packages-dir DIR
+                    Install the patched packages in DIR, a patched-pkgs
+                    checkout with builds or extracted release tarballs,
+                    instead of downloading the releases.
   --no-dotfiles     Install the OS but skip private dotfiles setup.
   --no-workloads    Skip GPU-container and ARM64-container host packages.
   --restore-lact-config
                     Restore the GPU-specific LACT snapshot after a hardware check.
   -h, --help        Show this help.
 
-Saved answers, YubiKey enrollments and built kernel packages are kept in
+Saved answers, YubiKey enrollments, built kernel and downloaded patched packages are kept in
 STATE_DIR (default /root/sys-setup-state) and offered again on the next run.
 EOF
 }
@@ -79,6 +83,11 @@ parse_args() {
                 CUSTOM_KERNEL_PACKAGES_DIR=${1:-}
                 CUSTOM_KERNEL_BUILD=0
                 [[ -n $CUSTOM_KERNEL_PACKAGES_DIR ]] || die "--kernel-packages-dir requires a directory"
+                ;;
+            --patched-packages-dir)
+                shift
+                PATCHED_PACKAGES_DIR=${1:-}
+                [[ -d $PATCHED_PACKAGES_DIR ]] || die "--patched-packages-dir requires a directory"
                 ;;
             --no-dotfiles)
                 ENABLE_DOTFILES=0
@@ -162,6 +171,11 @@ main() {
 
     section "All questions are answered; the rest runs unattended"
     run_step "Setting up package repositories" prepare_live_repos
+    run_step "Downloading deskshell" fetch_deskshell_package
+    if [[ -z $PATCHED_PACKAGES_DIR ]]; then
+        PATCHED_PACKAGES_DIR=$STATE_DIR/patched-pkgs
+        run_step "Downloading the patched packages" fetch_patched_packages "$PATCHED_PACKAGES_DIR"
+    fi
     if [[ -z $CUSTOM_KERNEL_PACKAGES_DIR ]]; then
         CUSTOM_KERNEL_PACKAGES_DIR=$STATE_DIR/kernel
         run_step "Building the custom kernel" prepare_custom_kernel_packages "$CUSTOM_KERNEL_PACKAGES_DIR"

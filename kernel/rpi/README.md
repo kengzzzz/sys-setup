@@ -1,27 +1,34 @@
-# Create Config
+# Raspberry Pi kernel
 
-- On an x86_64 Arch host, install `qemu-user-static` and
-  `qemu-user-static-binfmt`, then verify
-  `/proc/sys/fs/binfmt_misc/qemu-aarch64` exists. The Compose services force
-  `linux/arm64` and cannot run without AArch64 binfmt registration.
-- `docker compose run --rm kernel-config`
+## Config
 
-# Compile Kernel
+The Compose services run as `linux/arm64`, so the x86_64 host needs AArch64 binfmt.
+On Arch, install `qemu-user-static` and `qemu-user-static-binfmt`, and check that
+`/proc/sys/fs/binfmt_misc/qemu-aarch64` exists. Then run:
 
-- `docker compose run --rm kernel-builder`
+```sh
+docker compose run --rm kernel-config
+```
 
-# Installation
+## Build
 
-- `sudo mkdir -p /boot/firmware/custom`
-- `sudo cp -r ./out/lib/modules/* /lib/modules/`
-- `rm -rf ./out/lib`
-- `sudo cp -r ./out/* /boot/firmware/custom/`
+```sh
+docker compose run --rm kernel-builder
+```
 
-# Config Bootloader
+## Install
 
-- update `/boot/firmware/config.txt`. Add
+```sh
+sudo mkdir -p /boot/firmware/custom
+sudo cp -r ./out/lib/modules/* /lib/modules/
+rm -rf ./out/lib
+sudo cp -r ./out/* /boot/firmware/custom/
+sudo cp /boot/firmware/cmdline.txt /boot/firmware/custom/
+```
+
+Add these lines to `/boot/firmware/config.txt`:
+
 ```
 os_prefix=custom/
 kernel=kernel_2712.img
 ```
-- `sudo cp /boot/firmware/cmdline.txt /boot/firmware/custom/`

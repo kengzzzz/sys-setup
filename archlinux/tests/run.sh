@@ -62,7 +62,7 @@ dns=192.168.0.3;
 method=link-local'
 assert_eq "$expected_network" "$(render_static_network enp14s0 192.168.0.10/24 192.168.0.1 192.168.0.3)" "static network rendering"
 
-expected_cmdline='root=PARTUUID=abc-123 rw nvidia-drm.modeset=1 nvidia-drm.fbdev=1 quiet loglevel=3 systemd.show_status=false video=DP-3:3440x1440@240 fbcon=nodefer libahci.ignore_sss=1 usbcore.initial_descriptor_timeout=500'
+expected_cmdline='root=PARTUUID=abc-123 rw nvidia-drm.modeset=1 nvidia-drm.fbdev=1 quiet loglevel=3 systemd.show_status=false video=DP-3:3440x1440@240 fbcon=nodefer libahci.ignore_sss=1 usbcore.quirks=048d:5711:i'
 ROOT_FS=xfs
 assert_eq "$expected_cmdline" "$(kernel_cmdline abc-123)" "kernel command line"
 [[ $(PRIMARY_KERNEL=linux-eevdf-lto-prop render_limine_defaults abc-123) != *SNAPPER* ]] || {
@@ -83,7 +83,7 @@ expected_limine='ESP_PATH="/boot"
 UEFI_BOOT_ORDER=first
 ENABLE_LIMINE_FALLBACK=yes
 FIND_BOOTLOADERS=no
-KERNEL_CMDLINE[default]=root=PARTUUID=abc-123 rw rootflags=subvol=@,compress=zstd:3,discard=async nvidia-drm.modeset=1 nvidia-drm.fbdev=1 quiet loglevel=3 systemd.show_status=false video=DP-3:3440x1440@240 fbcon=nodefer libahci.ignore_sss=1 usbcore.initial_descriptor_timeout=500
+KERNEL_CMDLINE[default]=root=PARTUUID=abc-123 rw rootflags=subvol=@,compress=zstd:3,discard=async nvidia-drm.modeset=1 nvidia-drm.fbdev=1 quiet loglevel=3 systemd.show_status=false video=DP-3:3440x1440@240 fbcon=nodefer libahci.ignore_sss=1 usbcore.quirks=048d:5711:i
 BOOT_ORDER="linux-eevdf-lto-prop, *, *fallback, Snapshots"
 
 SNAPPER_CONFIG_NAME="root"
@@ -134,15 +134,16 @@ grep -q '^# -auth      \[success=1 default=bad\]     pam_unix.so' "$tmpdir/syste
     exit 1
 }
 
-for pkg in networkmanager quickshell hypridle uwsm brave-origin-bin lact fzf pkgfile \
-    ripgrep fwupd yubikey-manager yubikey-touch-detector wlr-randr pipewire-jack openai-codex opencode zenity zed \
+for pkg in networkmanager hypridle brave-origin-bin lact fzf pkgfile \
+    ripgrep fwupd yubikey-manager pipewire-jack openai-codex opencode zenity zed python-gobject \
     rsync dconf wl-clipboard xdg-utils which proton-cachyos-slr mousepad xwayland-satellite passt; do
     if ! printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx "$pkg"; then
         printf 'FAIL: %s should be in official package list\n' "$pkg" >&2
         exit 1
     fi
 done
-for pkg in systemd-networkd waybar swaync rofi swayidle swaylock helium-browser-bin kolourpaint python-pywal vesktop vscodium btop mate-polkit gpu-screen-recorder-ui; do
+for pkg in systemd-networkd waybar swaync rofi swayidle swaylock helium-browser-bin kolourpaint python-pywal vesktop vscodium resources mate-polkit gpu-screen-recorder-ui \
+    quickshell uwsm cliphist cpupower yubikey-touch-detector ttf-material-symbols-variable qt5ct wlr-randr python-dbus; do
     if printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx "$pkg"; then
         printf 'FAIL: stale package %s should not be in official package list\n' "$pkg" >&2
         exit 1
@@ -165,19 +166,23 @@ for pkg in base-devel sudo cachyos-keyring cachyos-mirrorlist; do
         exit 1
     fi
 done
-for pkg in cmake clang rustup nasm cava claude-code ddcutil hyprsunset resources wine ttf-cascadia-code ttf-material-symbols-variable \
+for pkg in cmake clang rustup nasm cava claude-code ddcutil hyprsunset btop wine ttf-cascadia-code \
     vesktop-bin rtkit libvirt virt-manager qemu-desktop edk2-ovmf swtpm dnsmasq; do
     if ! printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx "$pkg"; then
         printf 'FAIL: installed package %s should be in the repo package list\n' "$pkg" >&2
         exit 1
     fi
 done
-for pkg in broadcast-linux-bin tiny-poe2smoother-bin python-pywal; do
+for pkg in broadcast-linux-bin tiny-poe2smoother-bin; do
     if ! printf '%s\n' "${AUR_PACKAGES[@]}" | grep -qx "$pkg"; then
         printf 'FAIL: installed foreign package %s should be in the AUR package list\n' "$pkg" >&2
         exit 1
     fi
 done
+if printf '%s\n' "${AUR_PACKAGES[@]}" | grep -qx python-pywal; then
+    printf 'FAIL: stale package python-pywal should not be in the AUR package list\n' >&2
+    exit 1
+fi
 for pkg in nvidia-container-toolkit qemu-user-static qemu-user-static-binfmt; do
     if ! printf '%s\n' "${WORKLOAD_PACKAGES[@]}" | grep -qx "$pkg"; then
         printf 'FAIL: %s should be in workload package list\n' "$pkg" >&2
@@ -266,13 +271,13 @@ make_kernel_fixture "$CUSTOM_KERNEL_PACKAGES_DIR/linux-eevdf-lto-prop-nvidia-ope
     assert_eq "$tmpdir/packages" "$CUSTOM_KERNEL_PACKAGES_DIR" "package override preserved"
 )
 
-for package in docs applications swayidle swaylock xsettingsd etc usr utils gpu-screen-recorder btop; do
+for package in docs applications swayidle swaylock xsettingsd etc usr utils gpu-screen-recorder quickshell uwsm browser; do
     if printf '%s\n' "${ARCH_STOW_PACKAGES[@]}" | grep -qx "$package"; then
         printf 'FAIL: %s should not be in the Arch Stow allowlist\n' "$package" >&2
         exit 1
     fi
 done
-for package in hypr quickshell uwsm zshrc broadcast-linux claude hypr-kblayoutd qalculate zed mpv opencode gamebridge; do
+for package in hypr zshrc broadcast-linux claude hypr-kblayoutd qalculate zed mpv opencode gamebridge btop deskshell environment; do
     if ! printf '%s\n' "${ARCH_STOW_PACKAGES[@]}" | grep -qx "$package"; then
         printf 'FAIL: %s should be in the Arch Stow allowlist\n' "$package" >&2
         exit 1
@@ -556,35 +561,6 @@ EOF
 }
 
 (
-    render_cpu_power_sudoers cpu_test >"$tmpdir/cpu-power.sudoers"
-    visudo -cqf "$tmpdir/cpu-power.sudoers"
-    cvtsudoers -f json "$tmpdir/cpu-power.sudoers" >"$tmpdir/cpu-power.json"
-    python3 - "$tmpdir/cpu-power.json" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1]) as stream:
-    policy = json.load(stream)
-
-commands = []
-for user_spec in policy["User_Specs"]:
-    assert user_spec["User_List"] == [{"username": "cpu_test"}], "CPU access must be user-specific"
-    for command_spec in user_spec["Cmnd_Specs"]:
-        assert command_spec["runasusers"] == [{"username": "root"}], "CPU helper must run only as root"
-        assert "runasgroups" not in command_spec, "CPU helper must not allow arbitrary run-as groups"
-        assert command_spec["Options"] == [{"authenticate": False}], "Only passwordless authentication is needed"
-        for command in command_spec["Commands"]:
-            assert set(command) == {"command"}, "Unexpected command permission"
-            commands.append(command["command"])
-
-assert sorted(commands) == sorted(
-    f"/usr/local/libexec/cpu-power-apply {mode}"
-    for mode in ["eco", "balanced", "performance"]
-), "CPU access must allow exactly the three installed helper commands"
-PY
-)
-
-(
     INSTALL_SUDOERS="$tmpdir/sudoers-install"
     INSTALL_USER=keng
     configure_makepkg() { :; }
@@ -676,6 +652,186 @@ EOF
     [[ ! -e $tmpdir/kitty-args ]]
 ) || {
     printf 'FAIL: Tailscale first-login script\n' >&2
+    exit 1
+}
+
+(
+    sum=169a1b42c1fba9589ce173ea09c5fc89094d45cb31aab2ec82cd5a456d82593e
+    entry="$sum  deskshell-0.2.0-1-x86_64.pkg.tar.zst"
+    assert_eq "$entry" "$(printf '%s\n%s  SHA256SUMS.sig\n' "$entry" "$sum" | deskshell_release_entry)" "deskshell release entry"
+    (printf '%s\n%s  deskshell-0.1.0-1-x86_64.pkg.tar.zst\n' "$entry" "$sum" | deskshell_release_entry) 2>/dev/null && exit 1
+    (printf '%s  deskshell-1/../../x-x86_64.pkg.tar.zst\n' "$sum" | deskshell_release_entry) 2>/dev/null && exit 1
+    (: | deskshell_release_entry) 2>/dev/null && exit 1
+    printf '# comment\nusers = ["alice"]\n# users = ["bob"]\n' >"$tmpdir/greeter.toml"
+    assert_eq $'# comment\nusers = ["keng"]\n# users = ["bob"]' \
+        "$(render_deskshell_greeter_config keng "$tmpdir/greeter.toml")" "deskshell greeter users"
+) || {
+    printf 'FAIL: deskshell release and greeter config\n' >&2
+    exit 1
+}
+
+make_package_fixture() {
+    local output=$1 name=$2 version=$3 dep
+    shift 3
+    rm -rf "$tmpdir/pkginfo"
+    mkdir -p "$tmpdir/pkginfo"
+    {
+        printf 'pkgname = %s\npkgver = %s\n' "$name" "$version"
+        for dep in "$@"; do
+            printf 'depend = %s\n' "$dep"
+        done
+    } >"$tmpdir/pkginfo/.PKGINFO"
+    tar --zstd -cf "$output" -C "$tmpdir/pkginfo" .PKGINFO
+}
+
+(
+    checkout="$tmpdir/patched-checkout"
+    add_build() {
+        local pkg=$1 version=$2 abi=$3
+        shift 3
+        mkdir -p "$checkout/$pkg/dist/$version"
+        printf 'PKGVER=%s\nPKGREL=%s\nABI_PACKAGES="%s"\n' "${version%-*}" "${version##*-}" "$abi" \
+            >"$checkout/$pkg/package.env"
+        printf '%s\n' "$@" >"$checkout/$pkg/dist/$version/build-packages.txt"
+    }
+    add_build aquamarine 0.16.0-1.4 hyprutils 'hyprutils 0.14.3-1'
+    make_package_fixture "$checkout/aquamarine/dist/0.16.0-1.4/aquamarine-0.16.0-1.4-x86_64.pkg.tar.zst" \
+        aquamarine 0.16.0-1.4 'hyprutils>=0.14'
+    add_build hyprland 0.57.2-1.8 'aquamarine hyprutils' 'aquamarine 0.16.0-1' 'hyprutils 0.14.3-1'
+    make_package_fixture "$checkout/hyprland/dist/0.57.2-1.8/hyprland-0.57.2-1.8-x86_64.pkg.tar.zst" \
+        hyprland 0.57.2-1.8 aquamarine 'hyprutils>=0.14'
+    make_package_fixture "$checkout/hyprland/dist/0.57.2-1.8/hyprpm-0.57.2-1.8-x86_64.pkg.tar.zst" \
+        hyprpm 0.57.2-1.8 not-installed-dep
+    add_build freerdp 3.33.1-1.3 ''
+    make_package_fixture "$checkout/freerdp/dist/3.33.1-1.3/freerdp-2:3.33.1-1.3-x86_64.pkg.tar.zst" \
+        freerdp 2:3.33.1-1.3 missing-dep
+    add_build egl-wayland2 1.0.2-1.4 ''
+    rm -rf "$checkout/egl-wayland2/dist"
+    for dir in "$checkout"/*/dist/*/; do
+        (cd "$dir" && sha256sum -- *.pkg.tar.zst >SHA256SUMS)
+    done
+
+    builds=$(patched_package_builds "$checkout" 2>"$tmpdir/patched-warnings")
+    assert_eq "aquamarine $checkout/aquamarine/dist/0.16.0-1.4
+hyprland $checkout/hyprland/dist/0.57.2-1.8
+freerdp $checkout/freerdp/dist/3.33.1-1.3" "$builds" "finished patched builds"
+    grep -q 'egl-wayland2 1.0.2-1.4 was not built' "$tmpdir/patched-warnings"
+    [[ -z $(patched_package_builds "$tmpdir/no-such-checkout" 2>/dev/null) ]]
+
+    INSTALL_STATE="$tmpdir/patched-state"
+    stage_patched_packages "$checkout" "$INSTALL_STATE/patched-packages" 2>/dev/null
+    assert_eq 'aquamarine freerdp hyprland' "$(cd "$INSTALL_STATE/patched-packages" && echo *)" "staged patched packages"
+    [[ -f $INSTALL_STATE/patched-packages/hyprland/package.env ]]
+    [[ -f $INSTALL_STATE/patched-packages/hyprland/build-packages.txt ]]
+
+    pacman_db='aquamarine 0.16.0-1
+hyprutils 0.14.3-1
+hyprland 0.57.2-1
+freerdp 2:3.33.1-1'
+    pacman() {
+        case $1 in
+            -Q) awk -v p="$2" '$1 == p { print; found=1 } END { exit !found }' <<<"$pacman_db" ;;
+            -T)
+                shift
+                local dep status=0
+                for dep in "$@"; do
+                    if ! awk -v p="${dep%%[<>=]*}" '$1 == p { found=1 } END { exit !found }' <<<"$pacman_db"; then
+                        printf '%s\n' "$dep"
+                        status=127
+                    fi
+                done
+                return "$status"
+                ;;
+            -U)
+                shift 2
+                printf '%s\n' "${@##*/}" >"$tmpdir/patched-installed"
+                ;;
+        esac
+    }
+    [[ -z $(patched_package_problems "$INSTALL_STATE/patched-packages/hyprland") ]]
+    assert_eq 'freerdp needs missing-dep' "$(patched_package_problems "$INSTALL_STATE/patched-packages/freerdp")" \
+        "missing patched dependency"
+    pacman_db=${pacman_db/hyprutils 0.14.3-1/hyprutils 0.15.0-1}
+    assert_eq 'hyprutils built against 0.14.3-1, the system has 0.15.0-1' \
+        "$(patched_package_problems "$INSTALL_STATE/patched-packages/aquamarine")" "patched ABI mismatch"
+    pacman_db=${pacman_db/hyprutils 0.15.0-1/hyprutils 0.14.3-1}
+    pacman_db=${pacman_db/hyprland 0.57.2-1/hyprland 0.57.3-1}
+    assert_eq 'hyprland is 0.57.2-1.8, the system has 0.57.3-1' \
+        "$(patched_package_problems "$INSTALL_STATE/patched-packages/hyprland")" "patched package older than the system"
+    pacman_db=${pacman_db/hyprland 0.57.3-1/hyprland 0.57.2-1}
+
+    install_patched_packages >/dev/null 2>"$tmpdir/patched-install-warnings"
+    assert_eq $'aquamarine-0.16.0-1.4-x86_64.pkg.tar.zst\nhyprland-0.57.2-1.8-x86_64.pkg.tar.zst' \
+        "$(<"$tmpdir/patched-installed")" "installed patched packages"
+    grep -q 'patched freerdp does not fit this system' "$tmpdir/patched-install-warnings"
+
+    rm "$tmpdir/patched-installed"
+    INSTALL_STATE="$tmpdir/empty-state"
+    install_patched_packages >/dev/null 2>&1
+    [[ ! -e $tmpdir/patched-installed ]]
+) || {
+    printf 'FAIL: patched packages\n' >&2
+    exit 1
+}
+
+(
+    releases="$tmpdir/releases"
+    mkdir -p "$releases/raw"
+    make_release() {
+        local pkg=$1 version=$2 src="$tmpdir/release-src/$1"
+        mkdir -p "$src/$pkg/dist/$version" "$releases/raw/$pkg" "$releases/$pkg-$version"
+        printf 'PKGVER=%s\nPKGREL=%s\n' "${version%-*}" "${version##*-}" | tee "$src/$pkg/package.env" \
+            >"$releases/raw/$pkg/package.env"
+        make_package_fixture "$src/$pkg/dist/$version/$pkg-$version-x86_64.pkg.tar.zst" "$pkg" "$version"
+        printf '%s 1-1\n' "$pkg" >"$src/$pkg/dist/$version/build-packages.txt"
+        (cd "$src/$pkg/dist/$version" && sha256sum -- *.pkg.tar.zst >SHA256SUMS)
+        tar -cf "$releases/$pkg-$version/$pkg-$version.tar" -C "$src" "$pkg"
+        (cd "$releases/$pkg-$version" && sha256sum "$pkg-$version.tar" >"$pkg-$version.tar.sha256")
+    }
+    make_release aquamarine 0.16.0-1.4
+    make_release hyprland 0.57.2-1.8
+    make_release freerdp 3.33.1-1.3
+    printf 'tampered\n' >>"$releases/freerdp-3.33.1-1.3/freerdp-3.33.1-1.3.tar"
+    make_release egl-wayland2 1.0.2-1.4
+    ln -s /etc/passwd "$tmpdir/release-src/egl-wayland2/egl-wayland2/link"
+    tar -cf "$releases/egl-wayland2-1.0.2-1.4/egl-wayland2-1.0.2-1.4.tar" -C "$tmpdir/release-src/egl-wayland2" egl-wayland2
+    (cd "$releases/egl-wayland2-1.0.2-1.4" && sha256sum egl-wayland2-1.0.2-1.4.tar >egl-wayland2-1.0.2-1.4.tar.sha256)
+    rm -r "$releases/hyprland-0.57.2-1.8"
+
+    PATCHED_PACKAGES_RAW=https://raw.test
+    PATCHED_PACKAGES_RELEASES=https://releases.test
+    curl() {
+        local url=${*: -1} output='' file
+        while (($#)); do
+            [[ $1 != -o ]] || output=$2
+            shift
+        done
+        case $url in
+            https://raw.test/*) file=$releases/raw/${url#https://raw.test/} ;;
+            https://releases.test/*) file=$releases/${url#https://releases.test/} ;;
+        esac
+        printf '%s\n' "$url" >>"$tmpdir/curl-urls"
+        [[ -f $file ]] || return 22
+        if [[ -n $output ]]; then cp "$file" "$output"; else cat "$file"; fi
+    }
+    dir="$tmpdir/patched-download"
+    fetch_patched_packages "$dir" >/dev/null 2>"$tmpdir/fetch-warnings"
+    [[ -f $dir/aquamarine/dist/0.16.0-1.4/SHA256SUMS && -f $dir/aquamarine/package.env ]]
+    [[ ! -e $dir/hyprland && ! -e $dir/freerdp && ! -e $dir/egl-wayland2 ]]
+    grep -q 'no release hyprland-0.57.2-1.8' "$tmpdir/fetch-warnings"
+    grep -q 'freerdp-3.33.1-1.3.tar does not match its checksum' "$tmpdir/fetch-warnings"
+    grep -q 'egl-wayland2-1.0.2-1.4.tar holds files outside' "$tmpdir/fetch-warnings"
+    assert_eq "aquamarine $dir/aquamarine/dist/0.16.0-1.4" "$(patched_package_builds "$dir" 2>/dev/null)" "downloaded patched builds"
+
+    rm "$tmpdir/curl-urls"
+    fetch_patched_package "$dir" aquamarine >/dev/null
+    assert_eq https://raw.test/aquamarine/package.env "$(<"$tmpdir/curl-urls")" "verified release reused"
+
+    printf 'PKGVER=0.16.0\nPKGREL=$(reboot)\n' >"$releases/raw/aquamarine/package.env"
+    fetch_patched_package "$dir" aquamarine >/dev/null 2>"$tmpdir/fetch-warnings"
+    grep -q 'no usable PKGVER' "$tmpdir/fetch-warnings"
+) || {
+    printf 'FAIL: patched package downloads\n' >&2
     exit 1
 }
 

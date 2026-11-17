@@ -18,18 +18,18 @@ BASE_PACKAGES=(
 OFFICIAL_PACKAGES=(
     gnu-free-fonts noto-fonts noto-fonts-cjk noto-fonts-emoji noto-fonts-extra
     greetd hyprland swaybg swayimg hypridle hyprsunset
-    quickshell uwsm xdg-desktop-portal-hyprland xdg-desktop-portal-gtk gnome-keyring seahorse
-    qt5ct qt6ct papirus-icon-theme thunar mousepad gvfs tumbler kitty cliphist grim slurp satty hyprpicker
+    xdg-desktop-portal-hyprland xdg-desktop-portal-gtk gnome-keyring seahorse
+    qt6ct papirus-icon-theme thunar mousepad gvfs tumbler kitty grim slurp satty hyprpicker
     pipewire pipewire-pulse pipewire-jack wireplumber pavucontrol blueman brave-origin-bin mpv playerctl qalculate-gtk
-    nvidia-utils lib32-nvidia-utils egl-gbm libva-nvidia-driver cpupower
+    nvidia-utils lib32-nvidia-utils egl-gbm libva-nvidia-driver
     zsh zsh-completions zsh-syntax-highlighting imagemagick ffmpegthumbnailer
-    ttf-jetbrains-mono-nerd ttf-nerd-fonts-symbols-common ttf-ibm-plex ttf-cascadia-code ttf-material-symbols-variable fzf pkgfile
+    ttf-jetbrains-mono-nerd ttf-nerd-fonts-symbols-common ttf-ibm-plex ttf-cascadia-code fzf pkgfile
     eza fastfetch freerdp jq bc cpio ripgrep docker bubblewrap gpu-screen-recorder
     pacman-contrib cachyos-settings socat steam proton-cachyos-slr stow tailscale docker-compose
     paru
-    docker-buildx accountsservice python python-dbus zed nwg-look vesktop-bin pam-u2f
-    networkmanager lact fwupd yubikey-manager yubikey-touch-detector wlr-randr openai-codex opencode zenity
-    cava claude-code ddcutil resources wine clang cmake rustup nasm
+    docker-buildx accountsservice python python-gobject zed nwg-look vesktop-bin pam-u2f
+    networkmanager lact fwupd yubikey-manager openai-codex opencode zenity
+    cava claude-code ddcutil btop wine clang cmake rustup nasm
     edk2-shell sbctl sbsigntools
     rsync dconf wl-clipboard xdg-utils which
     rtkit libvirt virt-manager qemu-desktop edk2-ovmf swtpm dnsmasq
@@ -38,7 +38,7 @@ OFFICIAL_PACKAGES=(
 
 AUR_PACKAGES=(
     tokyonight-gtk-theme-git hypr-kblayoutd-bin catppuccin-cursors-mocha
-    broadcast-linux-bin tiny-poe2smoother-bin python-pywal
+    broadcast-linux-bin tiny-poe2smoother-bin
 )
 
 LIVE_PACKAGES=(
@@ -47,6 +47,12 @@ LIVE_PACKAGES=(
 )
 
 INSTALL_SUDOERS=/etc/sudoers.d/00-sys-setup-install
+
+DESKSHELL_RELEASE_URL=https://github.com/kengzzzz/deskshell/releases/latest/download
+
+PATCHED_PACKAGES_RAW=https://raw.githubusercontent.com/kengzzzz/patched-pkgs/main
+PATCHED_PACKAGES_RELEASES=https://github.com/kengzzzz/patched-pkgs/releases/download
+PATCHED_PACKAGES=(aquamarine egl-wayland2 hyprland freerdp)
 
 WORKLOAD_PACKAGES=(
     nvidia-container-toolkit
@@ -140,8 +146,9 @@ install_official_packages() {
 
 validate_package_selection() {
     section "Checking package availability before erasing the disk"
-    local db_dir metadata expected_nvidia available_nvidia
+    local db_dir metadata expected_nvidia available_nvidia deskshell
     validate_custom_kernel_packages
+    deskshell=$(deskshell_package "$STATE_DIR/deskshell")
     local packages=("${BASE_PACKAGES[@]}" "${OFFICIAL_PACKAGES[@]}" "$FALLBACK_KERNEL" "$FALLBACK_NVIDIA_PACKAGE")
     local -a filesystem
     mapfile -t filesystem < <(filesystem_packages)
@@ -162,7 +169,12 @@ validate_package_selection() {
         rm -rf "$db_dir"
         die "custom kernel dependencies cannot be resolved; disk was left unchanged"
     fi
+    if ! pacman --dbpath "$db_dir" -Up --noconfirm --print-format '%n %v' "$deskshell"; then
+        rm -rf "$db_dir"
+        die "deskshell dependencies cannot be resolved; disk was left unchanged"
+    fi
     rm -rf "$db_dir"
+    patched_package_builds "$PATCHED_PACKAGES_DIR" >/dev/null
     metadata=$(tar -xOf "${CUSTOM_KERNEL_PACKAGES[1]}" .PKGINFO)
     expected_nvidia=$(awk '$1 == "depend" && $3 ~ /^nvidia-utils=/ {sub(/^nvidia-utils=/, "", $3); print $3; exit}' <<<"$metadata")
     available_nvidia=$(pacman -Sddp --print-format '%v' nvidia-utils)
@@ -289,5 +301,232 @@ install_custom_kernel_packages() {
     local packages=("$INSTALL_STATE"/custom-kernel/*.pkg.tar.zst)
     shopt -u nullglob
     ((${#packages[@]} > 0)) || die "no custom kernel packages copied into target"
+    retry pacman -U --noconfirm "${packages[@]}"
+}
+
+deskshell_package() {
+    local dir=$1
+    shopt -s nullglob
+    local packages=("$dir"/deskshell-[0-9]*-x86_64.pkg.tar.zst)
+    shopt -u nullglob
+    ((${#packages[@]} == 1)) || die "expected one deskshell package in $dir, found ${#packages[@]}"
+    printf '%s\n' "${packages[0]}"
+}
+
+# The release must list exactly one package, and its name ends up in a URL and a path.
+deskshell_release_entry() {
+    local -a entries
+    mapfile -t entries < <(grep -E '^[0-9a-f]{64}  deskshell-[0-9][A-Za-z0-9._+:-]*-x86_64\.pkg\.tar\.zst$')
+    ((${#entries[@]} == 1)) || die "deskshell SHA256SUMS must list exactly one package, found ${#entries[@]}"
+    printf '%s\n' "${entries[0]}"
+}
+
+fetch_deskshell_package() {
+    section "Downloading deskshell"
+    local dir=$STATE_DIR/deskshell sums entry name
+    sums=$(curl -fsSL --retry 3 "$DESKSHELL_RELEASE_URL/SHA256SUMS") || die "cannot download the deskshell SHA256SUMS"
+    entry=$(deskshell_release_entry <<<"$sums")
+    name=${entry##* }
+    mkdir -p "$dir"
+    if [[ -f $dir/$name ]] && (cd "$dir" && sha256sum -c --quiet <<<"$entry") >/dev/null 2>&1; then
+        log "reusing $name"
+        return 0
+    fi
+    rm -f "$dir"/*.pkg.tar.zst "$dir"/*.part
+    retry curl -fL --retry 3 -o "$dir/$name.part" "$DESKSHELL_RELEASE_URL/$name"
+    mv "$dir/$name.part" "$dir/$name"
+    (cd "$dir" && sha256sum -c --quiet <<<"$entry") || {
+        rm -f "${dir:?}/$name"
+        die "$name does not match the release SHA256SUMS"
+    }
+    log "verified $name"
+}
+
+render_deskshell_greeter_config() {
+    local user=$1 source=$2
+    grep -qx 'users = .*' "$source" || die "no users line in $source"
+    sed "s/^users = .*/users = [\"$user\"]/" "$source"
+}
+
+install_deskshell() {
+    section "Installing deskshell"
+    local package share=/usr/share/deskshell/greetd
+    package=$(deskshell_package "$INSTALL_STATE/deskshell")
+    retry pacman -U --noconfirm --needed "$package"
+    usermod -aG deskshell-power "$INSTALL_USER"
+
+    # The dotfiles replace these with the machine's own greeter files later.
+    install -Dm644 "$share/deskshell-greeter.tmpfiles" /etc/tmpfiles.d/deskshell-greeter.conf
+    systemd-tmpfiles --create /etc/tmpfiles.d/deskshell-greeter.conf
+    install -Dm755 "$share/deskshell-greeter.sh" /etc/greetd/deskshell-greeter.sh
+    install -Dm644 "$share/deskshell-hyprland.lua" /etc/greetd/deskshell-hyprland.lua
+    install -Dm644 "$share/config.toml" /etc/greetd/config.toml
+    install -d /etc/deskshell
+    render_deskshell_greeter_config "$INSTALL_USER" "$share/greeter.toml" >/etc/deskshell/greeter.toml
+    chmod 644 /etc/deskshell/greeter.toml
+}
+
+patched_package_version() {
+    (
+        set -a
+        # shellcheck source=/dev/null
+        source "$1"
+        printf '%s-%s\n' "$PKGVER" "$PKGREL"
+    )
+}
+
+patched_package_abi() {
+    (
+        ABI_PACKAGES=
+        # shellcheck source=/dev/null
+        source "$1"
+        printf '%s\n' "$ABI_PACKAGES"
+    )
+}
+
+patched_package_builds() {
+    local checkout=$1 pkg env version out
+    if [[ ! -d $checkout ]]; then
+        warn "no patched packages in $checkout; the stock packages stay"
+        return 0
+    fi
+    for pkg in "${PATCHED_PACKAGES[@]}"; do
+        env=$checkout/$pkg/package.env
+        if [[ ! -f $env ]]; then
+            warn "$checkout has no $pkg; the stock package stays"
+            continue
+        fi
+        version=$(patched_package_version "$env")
+        out=$checkout/$pkg/dist/$version
+        if [[ ! -f $out/SHA256SUMS ]]; then
+            warn "$pkg $version was not built; the stock package stays"
+            continue
+        fi
+        printf '%s %s\n' "$pkg" "$out"
+    done
+}
+
+patched_release_version() {
+    local env=$1 pkgver pkgrel
+    pkgver=$(sed -n 's/^PKGVER=//p' <<<"$env")
+    pkgrel=$(sed -n 's/^PKGREL=//p' <<<"$env")
+    [[ $pkgver =~ ^[A-Za-z0-9._+~]+$ && $pkgrel =~ ^[0-9]+(\.[0-9]+)?$ ]] || return 1
+    printf '%s-%s\n' "$pkgver" "$pkgrel"
+}
+
+# Members must stay inside <pkg>/ and be plain files or directories.
+patched_release_tar_ok() {
+    local tarball=$1 pkg=$2 member
+    [[ -z $(tar -tvf "$tarball" | grep -v '^[-d]') ]] || return 1
+    while IFS= read -r member; do
+        [[ $member == "$pkg"/* && $member != *..* ]] || return 1
+    done < <(tar -tf "$tarball")
+}
+
+fetch_patched_package() {
+    local dir=$1 pkg=$2 env version tag out work url
+    env=$(curl -fsSL --retry 3 "$PATCHED_PACKAGES_RAW/$pkg/package.env") || {
+        warn "cannot read $pkg's package.env; the stock package stays"
+        return 0
+    }
+    version=$(patched_release_version "$env") || {
+        warn "$pkg's package.env has no usable PKGVER and PKGREL; the stock package stays"
+        return 0
+    }
+    tag=$pkg-$version
+    out=$dir/$pkg/dist/$version
+    if [[ -f $out/SHA256SUMS ]] && (cd "$out" && sha256sum -c --quiet SHA256SUMS) >/dev/null 2>&1; then
+        log "reusing $tag"
+        return 0
+    fi
+    rm -rf "${dir:?}/$pkg"
+    work=$(mktemp -d)
+    url=$PATCHED_PACKAGES_RELEASES/$tag/$tag.tar
+    if ! curl -fsSL --retry 3 -o "$work/$tag.tar.sha256" "$url.sha256" \
+        || ! curl -fL --retry 3 -o "$work/$tag.tar" "$url"; then
+        warn "no release $tag; the stock $pkg stays"
+    elif [[ $(awk '{ print $2 }' "$work/$tag.tar.sha256") != "$tag.tar" ]] \
+        || ! (cd "$work" && sha256sum -c --quiet "$tag.tar.sha256"); then
+        warn "$tag.tar does not match its checksum; the stock $pkg stays"
+    elif ! patched_release_tar_ok "$work/$tag.tar" "$pkg"; then
+        warn "$tag.tar holds files outside $pkg/; the stock $pkg stays"
+    else
+        mkdir -p "$dir"
+        tar --no-same-owner -xf "$work/$tag.tar" -C "$dir"
+        log "verified $tag"
+    fi
+    rm -rf "$work"
+}
+
+fetch_patched_packages() {
+    local dir=$1 pkg
+    section "Downloading patched packages"
+    for pkg in "${PATCHED_PACKAGES[@]}"; do
+        fetch_patched_package "$dir" "$pkg"
+    done
+}
+
+stage_patched_packages() {
+    local checkout=$1 dest=$2 pkg out
+    rm -rf "$dest"
+    install -d "$dest"
+    while read -r pkg out; do
+        if ! (cd "$out" && sha256sum -c --quiet SHA256SUMS); then
+            warn "$pkg packages in $out do not match their SHA256SUMS; the stock package stays"
+            continue
+        fi
+        install -d "$dest/$pkg"
+        cp -f "$out"/*.pkg.tar.zst "$out/build-packages.txt" "$dest/$pkg/"
+        cp -f "$checkout/$pkg/package.env" "$dest/$pkg/package.env"
+    done < <(patched_package_builds "$checkout")
+}
+
+package_info() {
+    bsdtar -xOf "$1" .PKGINFO | awk -v key="$2" '$1 == key { sub(/^[^=]*= /, ""); print }'
+}
+
+patched_package_problems() {
+    local dir=$1 abi built installed file name version
+    local -a deps
+    for abi in $(patched_package_abi "$dir/package.env"); do
+        built=$(awk -v p="$abi" '$1 == p { print $2 }' "$dir/build-packages.txt")
+        installed=$(pacman -Q "$abi" 2>/dev/null | cut -d' ' -f2) || installed=
+        [[ ${built%-*} == "${installed%-*}" ]] \
+            || printf '%s built against %s, the system has %s\n' "$abi" "${built:-none}" "${installed:-none}"
+    done
+    for file in "$dir"/*.pkg.tar.zst; do
+        name=$(package_info "$file" pkgname)
+        installed=$(pacman -Q "$name" 2>/dev/null | cut -d' ' -f2) || continue
+        version=$(package_info "$file" pkgver)
+        [[ ${version%-*} == "${installed%-*}" ]] \
+            || printf '%s is %s, the system has %s\n' "$name" "$version" "$installed"
+        mapfile -t deps < <(package_info "$file" depend)
+        ((${#deps[@]} == 0)) || pacman -T "${deps[@]}" | sed "s/^/$name needs /" || true
+    done
+}
+
+install_patched_packages() {
+    section "Installing patched packages"
+    local root=$INSTALL_STATE/patched-packages dir pkg file problems
+    local -a packages=()
+    shopt -s nullglob
+    for dir in "$root"/*/; do
+        dir=${dir%/}
+        pkg=${dir##*/}
+        problems=$(patched_package_problems "$dir")
+        if [[ -n $problems ]]; then
+            warn "patched $pkg does not fit this system; the stock package stays:"
+            printf '  %s\n' "${problems//$'\n'/$'\n'  }" >&2
+            continue
+        fi
+        for file in "$dir"/*.pkg.tar.zst; do
+            ! pacman -Q "$(package_info "$file" pkgname)" >/dev/null 2>&1 || packages+=("$file")
+        done
+    done
+    shopt -u nullglob
+    if ((${#packages[@]} == 0)); then
+        warn "no patched packages to install; the stock packages stay"
+        return 0
+    fi
     retry pacman -U --noconfirm "${packages[@]}"
 }

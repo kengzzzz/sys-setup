@@ -226,7 +226,7 @@ The installer stopped at the step "$step"${chroot_step:+ (inside the chroot, at 
 - Installer source: $repo_root (archlinux/install.sh, archlinux/chroot.sh, archlinux/lib/). Edits there are reloaded and copied into the new system when I choose retry.
 - Full log: $INSTALL_LOG; read its end first.
 - New system: mounted at /mnt; run commands in it with arch-chroot /mnt. Finished chroot steps are marked in /mnt/root/sys-setup-install/state/done.
-- Saved settings, YubiKey enrollments and kernel packages: $STATE_DIR.
+- Saved settings, YubiKey enrollments, kernel and patched packages: $STATE_DIR.
 Find the cause and fix it in the installer code or the system, then tell me to retry. Do not partition, format or wipe disks, do not reboot, and keep $STATE_DIR.
 EOF
 }

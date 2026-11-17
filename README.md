@@ -1,51 +1,44 @@
 # sys-setup
 
-Personal Arch Linux, WSL2 and kernel setup scripts.
+Setup scripts for my Arch Linux workstation, a WSL2 Debian box and custom kernels.
 
 ## Arch Linux
 
-Boot an Arch ISO in UEFI mode with Secure Boot disabled and networking connected:
+Boot an Arch ISO in UEFI mode with Secure Boot off and a network connection, then run:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/kengzzzz/sys-setup/main/archlinux.sh | bash
 ```
 
-Sets up my workstation: Hyprland/Quickshell, Limine, static networking,
-YubiKey authentication, dotfiles, and a custom kernel with a CachyOS LTS fallback.
-Uses Btrfs with `discard=async` and automatic package snapshots that boot from
-the Limine menu.
-See [recovery](archlinux/RECOVERY.md).
+It installs Hyprland with [deskshell](https://github.com/kengzzzz/deskshell), Limine,
+YubiKey login, the dotfiles and a custom kernel on Btrfs. Hyprland, aquamarine,
+egl-wayland2 and FreeRDP come from [patched-pkgs](https://github.com/kengzzzz/patched-pkgs).
+A patched package that does not match the system's libraries stays stock. deskshell
+and the patched packages are built for znver5.
 
-From a local checkout, use `bash archlinux/install.sh --dry-run` to preview the
-installation, or `--help` for options.
+`bash archlinux/install.sh --dry-run` previews the install. See
+[recovery](archlinux/RECOVERY.md).
 
-Extra desktop preferences live in the private `workstation` Stow package. After
-changing GUI preferences, run `python archlinux/scripts/workstation-preferences.py save`.
-The installer applies saved dconf and history-free Qalculate preferences automatically.
+To save desktop preferences into the private `workstation` Stow package, run
+`python archlinux/scripts/workstation-preferences.py save`.
 
-When the dotfiles include `utils/scripts/setup-tenant.sh`, the installer builds
-[gamebridge](https://github.com/kengzzzz/gamebridge) and runs that script, so Steam
-and the other game launchers run as a separate `tenant` user. Set tenant's Steam
-compatibility tool, shader processing and download options by hand after the first login.
+If the dotfiles have `utils/scripts/setup-tenant.sh`, Steam runs as a separate
+`tenant` user. Set its Steam compatibility tool, shader and download options after
+the first login.
 
-## WSL2 + Debian
+## WSL2 Debian
 
-Run in elevated PowerShell:
+In an elevated PowerShell:
 
 ```powershell
 irm https://raw.githubusercontent.com/kengzzzz/sys-setup/main/wsl2.ps1 -OutFile wsl2.ps1
 powershell -ExecutionPolicy Bypass -File .\wsl2.ps1
 ```
 
-See [WSL2 setup](wsl2/README.md) for prerequisites and configuration.
+See [WSL2 setup](wsl2/README.md).
 
-## Zed
+## Other
 
-Install the Zed configuration from the separate dotfiles checkout on Linux or
-native Windows through WSL2. See [Zed setup](zed/README.md).
-
-## Kernels
-
-- [Desktop build and install](kernel/desktop/README.md) — packages in `kernel/desktop/out/kernel/`.
-- [AutoFDO / Propeller profiling](kernel/desktop/docs/profiling.md).
-- [Raspberry Pi and benchmarks](kernel/README.md).
+- [Zed setup](zed/README.md)
+- [Kernels](kernel/README.md)
+- [llama.cpp server](llama.cpp/README.md)

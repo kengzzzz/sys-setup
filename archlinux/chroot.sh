@@ -105,10 +105,12 @@ main() {
     run_step mkinitcpio configure_mkinitcpio
     run_step official-packages install_official_packages
     run_step custom-kernel install_custom_kernel_packages
+    run_step patched-packages install_patched_packages
     run_step container-runtime configure_container_runtime
     run_step sudoers configure_sudoers
     run_step services enable_system_services
     run_step accounts configure_accounts
+    run_step deskshell install_deskshell
     run_step bootloader install_bootloader
     run_step aur-packages install_aur_packages_as_user
     run_step ssh-keys install_user_ssh_keys

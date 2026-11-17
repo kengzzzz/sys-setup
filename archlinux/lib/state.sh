@@ -26,8 +26,8 @@ offer_saved_state() {
     printf 'Kernel:    %s\n' "$kernel"
     ask answer "Press Enter to reuse all of it, or type new to start over:"
     if [[ ${answer,,} == new ]]; then
-        # Keep the kernel; it is reused only if its sources match.
-        find "$STATE_DIR" -mindepth 1 -maxdepth 1 ! -name kernel -exec rm -rf {} +
+        # Keep the packages; they are reused only if they still match.
+        find "$STATE_DIR" -mindepth 1 -maxdepth 1 ! -name kernel ! -name patched-pkgs -exec rm -rf {} +
         return 0
     fi
     load_config_file "$STATE_DIR/settings.env"
@@ -35,7 +35,7 @@ offer_saved_state() {
 
 # Runs on every attempt so a retry picks up fixes.
 stage_install_files() {
-    local target=$TARGET_INSTALL_DIR repo_root
+    local target=$TARGET_INSTALL_DIR repo_root deskshell
     repo_root=$(cd "$SCRIPT_DIR/.." && pwd)
     install -d -m700 "$target" "$target/state"
     rsync -a --delete "$SCRIPT_DIR/" "$target/archlinux/"
@@ -46,6 +46,11 @@ stage_install_files() {
     write_chroot_env "$target/state/install.env"
     install -d "$target/state/custom-kernel"
     rsync -a --delete "${CUSTOM_KERNEL_PACKAGES[@]}" "$target/state/custom-kernel/"
+    deskshell=$(deskshell_package "$STATE_DIR/deskshell")
+    rm -rf "$target/state/deskshell"
+    install -d "$target/state/deskshell"
+    cp -f "$deskshell" "$target/state/deskshell/"
+    stage_patched_packages "$PATCHED_PACKAGES_DIR" "$target/state/patched-packages"
     if [[ -d $STATE_DIR/yubikeys ]]; then
         rsync -a --delete --exclude '.new.*' "$STATE_DIR/yubikeys/" "$target/state/yubikeys/"
     fi

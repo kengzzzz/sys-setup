@@ -1,8 +1,9 @@
 # Kernels
 
-- [Desktop](desktop/README.md): Ryzen/NVIDIA kernel and profiling.
+- [Desktop](desktop/README.md): the Ryzen and NVIDIA kernel, with profiling
 - [Raspberry Pi](rpi/README.md)
 - [Benchmarks](benchmark/README.md)
 - [Old WSL2 kernel](deprecated/wsl2/README.md)
 
-Build: `cd kernel/desktop && docker compose run --rm --build kernel-builder`.
+To build the desktop kernel, run `docker compose run --rm --build kernel-builder` in
+`kernel/desktop`.

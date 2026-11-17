@@ -7,7 +7,7 @@ ARG CACHYOS_REPO_FLAVOR=auto
 COPY common/assets/cachyos-signing-key.asc /usr/local/share/cachyos-signing-key.asc
 COPY desktop/scripts/setup-cachyos-repo.sh /usr/local/bin/setup-cachyos-repo
 
-RUN pacman -Syy --noconfirm --needed gcc && \
+RUN pacman -Syyu --noconfirm --needed gcc && \
     pacman-key --init && \
     chmod 0755 /usr/local/bin/setup-cachyos-repo && \
     CACHYOS_REPO_FLAVOR="${CACHYOS_REPO_FLAVOR}" setup-cachyos-repo && \

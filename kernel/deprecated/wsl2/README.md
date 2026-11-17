@@ -1,47 +1,45 @@
+# Old WSL2 kernel
+
 > [!CAUTION]
-> **WARNING: EXPERIMENTAL BUILD**
->
-> This project is for development and testing purposes only. The resulting builds are considered unstable and may cause issues.
+> Experimental, for testing only. Builds may be unstable.
 
-# Create Config(Optional)
+## Build
 
-- `docker compose run --rm kernel-config`
+```sh
+docker compose run --rm kernel-config   # optional
+docker compose run --rm kernel-builder
+```
 
-# Compile Kernel
+## Install
 
-- `docker compose run --rm kernel-builder`
+Remove the old custom modules, then copy the new ones:
 
-# Installation
+```sh
+sudo rm -rf /usr/lib/modules/*-lto-keng-WSL2
+sudo cp -r ./out/modules/lib/modules/* /usr/lib/modules/
+```
 
-- remove your old custom modules `sudo rm -rf /usr/lib/modules/*-lto-keng-WSL2`
+On Windows, copy `vmlinux` to `C:\Users\<user>\kernel\vmlinux` and add it to
+`C:\Users\<user>\.wslconfig`:
 
-- `sudo cp -r ./out/modules/lib/modules/* /usr/lib/modules/`
-
-### Windows Host
-
-- Update `C:\Users\<user>\.wslconfig` Added
 ```
 [wsl2]
-...
 kernel=C:\\Users\\<user>\\kernel\\vmlinux
-...
 ```
 
-- Download vmlinux to
-`C:\Users\<user>\kernel\vmlinux`
+After WSL2 restarts, run `sudo depmod -a $(uname -r)`.
 
-# After Reboot WSL2
+## One-time setup
 
-`sudo depmod -a $(uname -r)`
+Enable systemd in `/etc/wsl.conf`:
 
-# One-Time Systemd Setup
-- Ensure systemd is enabled in `/etc/wsl.conf`:
 ```
 [boot]
 systemd=true
 ```
 
-- Create `/etc/modules-load.d/docker-net.conf` and append:
+Create `/etc/modules-load.d/docker-net.conf` with:
+
 ```
 iptable_filter
 iptable_nat
@@ -55,6 +53,6 @@ iptable_raw
 ip6table_raw
 ```
 
-# Context Switch Benchmark
+## Context switch benchmark
 
-![Context Switch Benchmark Results](./benchmark.png)
+![Context switch benchmark results](./benchmark.png)

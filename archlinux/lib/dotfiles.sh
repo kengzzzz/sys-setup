@@ -3,10 +3,13 @@
 ARCH_STOW_PACKAGES=(
     Thunar
     autostart
+    btop
     broadcast-linux
     claude
     codex
+    deskshell
     desktop
+    environment
     fastfetch
     fontconfig
     gamebridge
@@ -23,18 +26,14 @@ ARCH_STOW_PACKAGES=(
     pipewire
     qalculate
     qt6ct
-    quickshell
     ssh
     steam
-    uwsm
     vesktop
     zed
     zshrc
 )
 
 DEFAULT_BROWSER_DESKTOP=brave-origin.desktop
-GAMEBRIDGE_REPO=https://github.com/kengzzzz/gamebridge.git
-GAMEBRIDGE_BUILD_DIR=.cache/sys-setup/gamebridge
 
 configure_makepkg() {
     section "Configuring makepkg.conf"
@@ -209,27 +208,6 @@ restore_lact_config() {
     install -Dm644 "$source_file" /etc/lact/config.yaml
 }
 
-render_cpu_power_sudoers() {
-    local user=$1 mode
-    for mode in eco balanced performance; do
-        printf '%s ALL=(root) NOPASSWD: /usr/local/libexec/cpu-power-apply %s\n' "$user" "$mode"
-    done
-}
-
-install_cpu_power_controls() (
-    section "Installing CPU power controls"
-    local sudoers_file
-    sudoers_file=$(mktemp)
-    trap 'rm -f "$sudoers_file"' EXIT
-
-    render_cpu_power_sudoers "$INSTALL_USER" >"$sudoers_file"
-    visudo -cqf "$sudoers_file"
-    install -Dm755 -o root -g root \
-        "$DOTFILES_DIR/desktop/.config/desktop/scripts/cpu-power-apply" \
-        /usr/local/libexec/cpu-power-apply
-    install -Dm440 -o root -g root "$sudoers_file" /etc/sudoers.d/50-cpu-power
-)
-
 install_dotfiles_system_files() {
     section "Installing dotfiles system files"
     local dot_dir=$DOTFILES_DIR
@@ -259,8 +237,6 @@ install_dotfiles_system_files() {
         install -Dm644 "$dot_dir/etc/tmpfiles.d/x3d-mode.conf" /etc/tmpfiles.d/x3d-mode.conf
     fi
 
-    install_cpu_power_controls
-
     chmod 644 /usr/share/wayland-sessions/*.desktop
 }
 
@@ -268,29 +244,12 @@ tenant_setup_script() {
     printf '%s/utils/scripts/setup-tenant.sh' "$DOTFILES_DIR"
 }
 
-build_gamebridge() {
-    [[ -f $(tenant_setup_script) ]] || return 0
-    section "Building gamebridge"
-    runuser -u "$INSTALL_USER" -- bash -lc '
-        set -euo pipefail
-        src=$HOME/$2
-        rm -rf "$src"
-        git clone --depth=1 -- "$1" "$src"
-        cd "$src"
-        rustup toolchain install
-        cargo build --release --locked
-    ' bash "$GAMEBRIDGE_REPO" "$GAMEBRIDGE_BUILD_DIR"
-}
-
 setup_tenant_user() {
-    local script user_home
+    local script
     script=$(tenant_setup_script)
     [[ -f $script ]] || return 0
     section "Setting up the tenant user"
-    user_home=$(getent passwd "$INSTALL_USER" | cut -d: -f6)
-    [[ -n $user_home ]] || die "home directory not found for $INSTALL_USER"
-    GAMEBRIDGE_BIN="$user_home/$GAMEBRIDGE_BUILD_DIR/target/release/gamebridge" bash "$script"
-    rm -rf "${user_home:?}/$GAMEBRIDGE_BUILD_DIR"
+    bash "$script"
 }
 
 run_dotfiles_install() {
@@ -306,7 +265,6 @@ run_dotfiles_install() {
     run_step default-browser configure_default_browser
     run_step dotfiles-system-files install_dotfiles_system_files
     run_step lact restore_lact_config
-    run_step gamebridge build_gamebridge
     run_step tenant-user setup_tenant_user
     run_step user-services enable_target_user_services
     run_step workstation-preferences apply_workstation_preferences

@@ -1,34 +1,23 @@
 # Desktop kernel
 
-EEVDF + ThinLTO + AutoFDO + Propeller for my Ryzen/NVIDIA desktop.
+EEVDF with ThinLTO, AutoFDO and Propeller, for my Ryzen and NVIDIA desktop.
 
 ## Build
 
-From this directory, using Docker Compose:
-
 ```sh
-docker compose run --rm --build kernel-config   # config-only
+docker compose run --rm --build kernel-config   # config only
 docker compose run --rm --build kernel-builder
 ```
 
-Packages and `kernel.config` go to `out/kernel/`. Move old packages elsewhere
-before rebuilding the same version. `.env` sets pins and the tmpfs size (64G).
-
-Edit `patches/` for scheduler/LTO/profile/package choices, and
-`scripts/configure-kernel.sh` for hardware settings and matching assertions.
-Keep collection recipes aligned. Profile inputs live in `profiles/`; use
-`--build` after changing them. Recollect Propeller on every kernel update. See
-[profiling](docs/profiling.md).
+Packages go to `out/kernel/`. `.env` holds the version pins, `patches/` the kernel
+changes, and `scripts/configure-kernel.sh` the hardware options. After a kernel
+update, collect a new Propeller profile. See [profiling](docs/profiling.md).
 
 ## Install
-
-Build prints `Package: /out/kernel/...` (use `./out/kernel/...` on the host):
 
 ```sh
 sudo pacman -U ./out/kernel/linux-eevdf-lto-prop-[0-9]*-x86_64.pkg.tar.zst \
   ./out/kernel/linux-eevdf-lto-prop-nvidia-open-[0-9]*-x86_64.pkg.tar.zst
 ```
 
-Keep only one version in `out/kernel/` for globs, else use exact filenames. Headers are only needed for external
-module builds/DKMS. Check the boot entry and run `sudo mkinitcpio -P` after
-preset changes; keep a fallback kernel.
+Keep one version in `out/kernel/` so the globs match one file. Keep a fallback kernel.

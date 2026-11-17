@@ -74,20 +74,14 @@ enable_target_user_services() {
     link_user_unit "$user_home" hypr-kblayoutd.service graphical-session.target
     link_user_unit "$user_home" hyprsunset.service graphical-session.target
     link_user_unit "$user_home" hypridle.service graphical-session.target
-    dotfile_units="$user_home/.config/systemd/user"
-    link_user_unit "$user_home" quickshell.service graphical-session.target "$dotfile_units"
-    link_user_unit "$user_home" cliphist@text.service graphical-session.target "$dotfile_units"
-    link_user_unit "$user_home" cliphist@image.service graphical-session.target "$dotfile_units"
+    link_user_unit "$user_home" deskshell.service graphical-session.target
     link_user_unit "$user_home" broadcast-linux.service default.target
-    link_user_unit "$user_home" yubikey-touch-detector.socket sockets.target
-    link_user_unit "$user_home" yubikey-touch-detector.service default.target
+    link_user_unit "$user_home" deskshell-gpg.service default.target
     chown -h "$INSTALL_USER:$group" "$ssh_wants/ssh-agent.socket" \
         "$keyboard_wants/hypr-kblayoutd.service" "$broadcast_wants/broadcast-linux.service"
     chown -h "$INSTALL_USER:$group" "$keyboard_wants/hyprsunset.service" "$keyboard_wants/hypridle.service"
-    chown -h "$INSTALL_USER:$group" "$keyboard_wants/quickshell.service" \
-        "$keyboard_wants/cliphist@text.service" "$keyboard_wants/cliphist@image.service"
-    chown -h "$INSTALL_USER:$group" "$ssh_wants/yubikey-touch-detector.socket" \
-        "$broadcast_wants/yubikey-touch-detector.service"
+    chown -h "$INSTALL_USER:$group" "$keyboard_wants/deskshell.service" "$broadcast_wants/deskshell-gpg.service"
+    dotfile_units="$user_home/.config/systemd/user"
     [[ -e $dotfile_units/gamebridge-wayland.service ]] || return 0
     local pipewire_wants="$dotfile_units/pipewire.service.wants" unit
     install -d -o "$INSTALL_USER" -g "$group" "$pipewire_wants"
