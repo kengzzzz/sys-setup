@@ -97,7 +97,17 @@
      if [ "$_build_nvidia_580xx" = "yes" ]; then
          sh "${_nv_580xx_pkg}.run" --extract-only
      fi
-@@ -483,7 +489,6 @@
+@@ -335,6 +341,9 @@
+         fi
+     done
+ 
++    # rustc 1.100 replaced -Zprofile-sample-use with -Cprofile-sample-use.
++    sed -i 's/-Zprofile-sample-use=/$(if $(call rustc-min-version,110000),-C,-Z)profile-sample-use=/' scripts/Makefile.autofdo
++
+     echo "Setting config..."
+     cp ../config .config
+ 
+@@ -483,7 +492,6 @@
  
      if [ "$_autofdo" = "yes" ] && [ -n "$_autofdo_profile_name" ]; then
          echo "AutoFDO profile has been found..."
@@ -105,7 +115,7 @@
      fi
  
      # Propeller Optimization
-@@ -493,7 +498,6 @@
+@@ -493,7 +501,6 @@
  
      if [ "$_propeller" = "yes" ] && [ "$_propeller_profiles" = "yes" ]; then
          echo "Propeller profile has been found..."
@@ -113,7 +123,7 @@
      fi
  
      ### Optionally use running kernel's config
-@@ -566,6 +570,7 @@
+@@ -566,6 +573,7 @@
  }
  
  build() {
@@ -121,7 +131,7 @@
      cd "$_srcname"
      make "${BUILD_FLAGS[@]}" -j"$(nproc)" all
  
-@@ -614,6 +619,7 @@
+@@ -614,6 +622,7 @@
  }
  
  _package() {
