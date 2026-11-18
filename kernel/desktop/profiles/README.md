@@ -3,16 +3,16 @@
 ## AutoFDO
 
 - File: `kernel.afdo`
-- Collected: 2026-11-08 on `linux-profiler 7.3.3-1` (EEVDF, ThinLTO) with `kernel-autofdo-profile`, 20 min
-- SHA-256: `e924ab6ca6ed78f7897cb9585a34fa9918ccff108eaf12c5c6b70c9abeaa3b4f`
+- Collected: 2026-11-17 on `linux-profiler 7.3.5-1` (EEVDF, ThinLTO) with `kernel-autofdo-profile`, 20 min
+- SHA-256: `4805f9be2768388f608ffc6a0bb8d1523382433d644c1f626d3565c0c94e082a`
 
 ## Propeller
 
 - Files: `propeller_cc_profile.txt`, `propeller_ld_profile.txt`
-- Collected: 2026-11-11 on `linux-profiler 7.3.4-1` (EEVDF, ThinLTO, the `kernel.afdo` above) with `propeller`, 25 min, path cloning on
-- Profiled build ID: `ce7887c1e71da4b7bbb2d8c08c30f06e722b8176`
-- SHA-256 cc: `8e1efa253355d20cf7985f884d8757da9fe24c11c469715e63336b0127ec714a`
-- SHA-256 ld: `d0300e654a7a293dfa0ea18000feab11a05414ae008ccce4559d38da5b7a52b8`
+- Collected: 2026-11-17 on `linux-profiler 7.3.5-1` (EEVDF, ThinLTO, the `kernel.afdo` above) with `propeller`, 25 min, path cloning on
+- Profiled build ID: `6ff03be9331d8a4a1648f2b5d1cc2fdf1e0fe930`
+- SHA-256 cc: `2f64b963caf0411b8fd84a96bd96f19e26cd701bbb91f1966b555e690b280d11`
+- SHA-256 ld: `1a816f49710a9edb822900b7b5a3fd647001a03656c0fa30a546085c28228dd4`
 
 Update this file when you replace a profile, then rebuild with `--build`. A new
 `kernel.afdo` needs a new Propeller profile.
