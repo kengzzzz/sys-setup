@@ -52,7 +52,7 @@ DESKSHELL_RELEASE_URL=https://github.com/kengzzzz/deskshell/releases/latest/down
 
 PATCHED_PACKAGES_RAW=https://raw.githubusercontent.com/kengzzzz/patched-pkgs/main
 PATCHED_PACKAGES_RELEASES=https://github.com/kengzzzz/patched-pkgs/releases/download
-PATCHED_PACKAGES=(aquamarine egl-wayland2 hyprland freerdp)
+PATCHED_PACKAGES=(aquamarine egl-wayland2 hyprland freerdp btop)
 
 WORKLOAD_PACKAGES=(
     nvidia-container-toolkit

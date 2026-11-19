@@ -12,7 +12,7 @@ curl -fsSL https://raw.githubusercontent.com/kengzzzz/sys-setup/main/archlinux.s
 
 It installs Hyprland with [deskshell](https://github.com/kengzzzz/deskshell), Limine,
 YubiKey login, the dotfiles and a custom kernel on Btrfs. Hyprland, aquamarine,
-egl-wayland2 and FreeRDP come from [patched-pkgs](https://github.com/kengzzzz/patched-pkgs).
+egl-wayland2, FreeRDP and btop come from [patched-pkgs](https://github.com/kengzzzz/patched-pkgs).
 A patched package that does not match the system's libraries stays stock. deskshell
 and the patched packages are built for znver5.
 
