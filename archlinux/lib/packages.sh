@@ -29,7 +29,7 @@ OFFICIAL_PACKAGES=(
     paru
     docker-buildx accountsservice python python-gobject zed nwg-look vesktop-bin pam-u2f
     networkmanager lact fwupd yubikey-manager openai-codex opencode zenity
-    cava claude-code ddcutil btop wine clang cmake rustup nasm
+    claude-code ddcutil btop wine clang cmake rustup nasm
     edk2-shell sbctl sbsigntools
     rsync dconf wl-clipboard xdg-utils which
     rtkit libvirt virt-manager qemu-desktop edk2-ovmf swtpm dnsmasq

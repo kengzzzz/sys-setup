@@ -143,7 +143,7 @@ for pkg in networkmanager hypridle brave-origin-bin lact fzf pkgfile \
     fi
 done
 for pkg in systemd-networkd waybar swaync rofi swayidle swaylock helium-browser-bin kolourpaint python-pywal vesktop vscodium resources mate-polkit gpu-screen-recorder-ui \
-    quickshell uwsm cliphist cpupower yubikey-touch-detector ttf-material-symbols-variable qt5ct wlr-randr python-dbus; do
+    quickshell uwsm cliphist cpupower yubikey-touch-detector ttf-material-symbols-variable qt5ct wlr-randr python-dbus cava; do
     if printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx "$pkg"; then
         printf 'FAIL: stale package %s should not be in official package list\n' "$pkg" >&2
         exit 1
@@ -166,7 +166,7 @@ for pkg in base-devel sudo cachyos-keyring cachyos-mirrorlist; do
         exit 1
     fi
 done
-for pkg in cmake clang rustup nasm cava claude-code ddcutil hyprsunset btop wine ttf-cascadia-code \
+for pkg in cmake clang rustup nasm claude-code ddcutil hyprsunset btop wine ttf-cascadia-code \
     vesktop-bin rtkit libvirt virt-manager qemu-desktop edk2-ovmf swtpm dnsmasq; do
     if ! printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx "$pkg"; then
         printf 'FAIL: installed package %s should be in the repo package list\n' "$pkg" >&2
@@ -271,13 +271,13 @@ make_kernel_fixture "$CUSTOM_KERNEL_PACKAGES_DIR/linux-eevdf-lto-prop-nvidia-ope
     assert_eq "$tmpdir/packages" "$CUSTOM_KERNEL_PACKAGES_DIR" "package override preserved"
 )
 
-for package in docs applications swayidle swaylock xsettingsd etc usr utils gpu-screen-recorder quickshell uwsm browser; do
+for package in docs applications swayidle swaylock xsettingsd etc usr utils gpu-screen-recorder quickshell uwsm browser gamebridge; do
     if printf '%s\n' "${ARCH_STOW_PACKAGES[@]}" | grep -qx "$package"; then
         printf 'FAIL: %s should not be in the Arch Stow allowlist\n' "$package" >&2
         exit 1
     fi
 done
-for package in hypr zshrc broadcast-linux claude hypr-kblayoutd qalculate zed mpv opencode gamebridge btop deskshell environment; do
+for package in hypr zshrc broadcast-linux claude hypr-kblayoutd qalculate zed mpv opencode tenant-host btop deskshell environment; do
     if ! printf '%s\n' "${ARCH_STOW_PACKAGES[@]}" | grep -qx "$package"; then
         printf 'FAIL: %s should be in the Arch Stow allowlist\n' "$package" >&2
         exit 1

@@ -82,18 +82,18 @@ enable_target_user_services() {
     chown -h "$INSTALL_USER:$group" "$keyboard_wants/hyprsunset.service" "$keyboard_wants/hypridle.service"
     chown -h "$INSTALL_USER:$group" "$keyboard_wants/deskshell.service" "$broadcast_wants/deskshell-gpg.service"
     dotfile_units="$user_home/.config/systemd/user"
-    [[ -e $dotfile_units/gamebridge-wayland.service ]] || return 0
+    [[ -e $dotfile_units/tenant-wayland.service ]] || return 0
     local pipewire_wants="$dotfile_units/pipewire.service.wants" unit
     install -d -o "$INSTALL_USER" -g "$group" "$pipewire_wants"
-    for unit in gamebridge-wayland.service gamebridge-notify.service gamebridge-tray.service; do
+    for unit in tenant-wayland.service tenant-notify.service tenant-tray.service; do
         link_user_unit "$user_home" "$unit" graphical-session.target "$dotfile_units"
         chown -h "$INSTALL_USER:$group" "$keyboard_wants/$unit"
     done
-    # gamebridge-pulse BindsTo pipewire, so default.target alone leaves it dead after a PipeWire restart.
-    link_user_unit "$user_home" gamebridge-pulse.service pipewire.service "$dotfile_units"
-    link_user_unit "$user_home" gamebridge-shortcuts.path default.target "$dotfile_units"
-    chown -h "$INSTALL_USER:$group" "$pipewire_wants/gamebridge-pulse.service" \
-        "$broadcast_wants/gamebridge-shortcuts.path"
+    # tenant-pulse BindsTo pipewire, so default.target alone leaves it dead after a PipeWire restart.
+    link_user_unit "$user_home" tenant-pulse.service pipewire.service "$dotfile_units"
+    link_user_unit "$user_home" tenant-shortcuts.path default.target "$dotfile_units"
+    chown -h "$INSTALL_USER:$group" "$pipewire_wants/tenant-pulse.service" \
+        "$broadcast_wants/tenant-shortcuts.path"
 }
 
 install_user_dirs() {

@@ -16,7 +16,7 @@ EXPORTS = Path(".config/workstation")
 QALCULATE = Path(".config/qalculate/qalculate-gtk.cfg")
 PUBLIC_REPO = Path(__file__).resolve().parents[2]
 HOME_PATHS = (
-    ".config/cava", ".config/xfce4/xfconf/xfce-perchannel-xml/thunar.xml",
+    ".config/xfce4/xfconf/xfce-perchannel-xml/thunar.xml",
     ".config/pavucontrol.ini", ".config/qalculate/qalculate-gtk.cfg",
     ".config/mimeapps.list", ".config/user-dirs.dirs", ".config/user-dirs.locale",
     ".config/git/ignore", ".gtkrc-2.0", ".themes", ".icons",

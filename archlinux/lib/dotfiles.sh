@@ -12,7 +12,6 @@ ARCH_STOW_PACKAGES=(
     environment
     fastfetch
     fontconfig
-    gamebridge
     gnupg
     gtk-3.0
     gtk-4.0
@@ -28,6 +27,7 @@ ARCH_STOW_PACKAGES=(
     qt6ct
     ssh
     steam
+    tenant-host
     vesktop
     zed
     zshrc
