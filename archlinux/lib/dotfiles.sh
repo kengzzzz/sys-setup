@@ -233,6 +233,10 @@ install_dotfiles_system_files() {
         install -Dm644 "$dot_dir/$proton_settings" "/$proton_settings"
     fi
 
+    if [[ -f $dot_dir/utils/scripts/install-system-tuning.sh ]]; then
+        bash "$dot_dir/utils/scripts/install-system-tuning.sh"
+    fi
+
     if [[ -f $dot_dir/etc/tmpfiles.d/x3d-mode.conf ]]; then
         install -Dm644 "$dot_dir/etc/tmpfiles.d/x3d-mode.conf" /etc/tmpfiles.d/x3d-mode.conf
     fi

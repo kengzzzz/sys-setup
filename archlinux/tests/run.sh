@@ -136,14 +136,15 @@ grep -q '^# -auth      \[success=1 default=bad\]     pam_unix.so' "$tmpdir/syste
 
 for pkg in networkmanager hypridle brave-origin-bin lact fzf pkgfile \
     ripgrep fwupd yubikey-manager pipewire-jack openai-codex opencode zenity zed python-gobject \
-    rsync dconf wl-clipboard xdg-utils which proton-cachyos-slr mousepad xwayland-satellite passt; do
+    rsync dconf wl-clipboard xdg-utils which proton-cachyos-slr mousepad xwayland-satellite passt zram-generator; do
     if ! printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx "$pkg"; then
         printf 'FAIL: %s should be in official package list\n' "$pkg" >&2
         exit 1
     fi
 done
 for pkg in systemd-networkd waybar swaync rofi swayidle swaylock helium-browser-bin kolourpaint python-pywal vesktop vscodium resources mate-polkit gpu-screen-recorder-ui \
-    quickshell uwsm cliphist cpupower yubikey-touch-detector ttf-material-symbols-variable qt5ct wlr-randr python-dbus cava; do
+    quickshell uwsm cliphist cpupower yubikey-touch-detector ttf-material-symbols-variable qt5ct wlr-randr python-dbus cava \
+    cachyos-settings ananicy-cpp; do
     if printf '%s\n' "${OFFICIAL_PACKAGES[@]}" | grep -qx "$pkg"; then
         printf 'FAIL: stale package %s should not be in official package list\n' "$pkg" >&2
         exit 1
@@ -304,10 +305,6 @@ for service in NetworkManager.service systemd-resolved.service lactd.service sys
         exit 1
     fi
 done
-if ! printf '%s\n' "${DISABLED_SYSTEM_SERVICES[@]}" | grep -qx 'ananicy-cpp.service'; then
-    printf 'FAIL: ananicy-cpp should be disabled after cachyos-settings enables it\n' >&2
-    exit 1
-fi
 
 cat >"$tmpdir/pacman.conf" <<'EOF'
 #[multilib-testing]
