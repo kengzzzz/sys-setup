@@ -9,10 +9,10 @@
 ## Propeller
 
 - Files: `propeller_cc_profile.txt`, `propeller_ld_profile.txt`
-- Collected: 2026-11-17 on `linux-profiler 7.3.5-1` (EEVDF, ThinLTO, the `kernel.afdo` above) with `propeller`, 25 min, path cloning on
-- Profiled build ID: `6ff03be9331d8a4a1648f2b5d1cc2fdf1e0fe930`
-- SHA-256 cc: `2f64b963caf0411b8fd84a96bd96f19e26cd701bbb91f1966b555e690b280d11`
-- SHA-256 ld: `1a816f49710a9edb822900b7b5a3fd647001a03656c0fa30a546085c28228dd4`
+- Collected: 2026-11-23 on `linux-profiler 7.3.6-1` (EEVDF, ThinLTO, the `kernel.afdo` above) with `propeller`, 25 min, path cloning on
+- Profiled build ID: `7260299586d2a232d63e4adeea60f817cba4eb07`
+- SHA-256 cc: `9490e51d28ed1c4743227262c375b37fa560f63e76846c81cc2af882b02affb5`
+- SHA-256 ld: `f2c801ba49423f14fa8666cfd05a89a431aab3b8845eed1fa1420bad5bfa36ab`
 
 Update this file when you replace a profile, then rebuild with `--build`. A new
 `kernel.afdo` needs a new Propeller profile.
