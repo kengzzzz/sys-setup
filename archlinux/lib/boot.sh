@@ -18,7 +18,7 @@ kernel_cmdline() {
     if [[ ${ROOT_FS:-btrfs} == btrfs ]]; then
         root_flags=' rootflags=subvol=@,compress=zstd:3,discard=async'
     fi
-    printf 'root=PARTUUID=%s rw%s nvidia-drm.modeset=1 nvidia-drm.fbdev=1 quiet loglevel=3 systemd.show_status=false video=DP-3:3440x1440@240 fbcon=nodefer libahci.ignore_sss=1 usbcore.quirks=048d:5711:i\n' \
+    printf 'root=PARTUUID=%s rw%s nvidia-drm.modeset=1 nvidia-drm.fbdev=1 quiet loglevel=3 systemd.show_status=false video=DP-3:3440x1440@240 fbcon=nodefer libahci.ignore_sss=1 usbcore.quirks=048d:5711:i amd_iommu_intr=legacy ahci.mask_port_map=0x80000000\n' \
         "$root_partuuid" "$root_flags"
 }
 

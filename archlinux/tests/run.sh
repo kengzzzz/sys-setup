@@ -62,7 +62,7 @@ dns=192.168.0.3;
 method=link-local'
 assert_eq "$expected_network" "$(render_static_network enp14s0 192.168.0.10/24 192.168.0.1 192.168.0.3)" "static network rendering"
 
-expected_cmdline='root=PARTUUID=abc-123 rw nvidia-drm.modeset=1 nvidia-drm.fbdev=1 quiet loglevel=3 systemd.show_status=false video=DP-3:3440x1440@240 fbcon=nodefer libahci.ignore_sss=1 usbcore.quirks=048d:5711:i'
+expected_cmdline='root=PARTUUID=abc-123 rw nvidia-drm.modeset=1 nvidia-drm.fbdev=1 quiet loglevel=3 systemd.show_status=false video=DP-3:3440x1440@240 fbcon=nodefer libahci.ignore_sss=1 usbcore.quirks=048d:5711:i amd_iommu_intr=legacy ahci.mask_port_map=0x80000000'
 ROOT_FS=xfs
 assert_eq "$expected_cmdline" "$(kernel_cmdline abc-123)" "kernel command line"
 [[ $(PRIMARY_KERNEL=linux-eevdf-lto-prop render_limine_defaults abc-123) != *SNAPPER* ]] || {
@@ -83,7 +83,7 @@ expected_limine='ESP_PATH="/boot"
 UEFI_BOOT_ORDER=first
 ENABLE_LIMINE_FALLBACK=yes
 FIND_BOOTLOADERS=no
-KERNEL_CMDLINE[default]=root=PARTUUID=abc-123 rw rootflags=subvol=@,compress=zstd:3,discard=async nvidia-drm.modeset=1 nvidia-drm.fbdev=1 quiet loglevel=3 systemd.show_status=false video=DP-3:3440x1440@240 fbcon=nodefer libahci.ignore_sss=1 usbcore.quirks=048d:5711:i
+KERNEL_CMDLINE[default]=root=PARTUUID=abc-123 rw rootflags=subvol=@,compress=zstd:3,discard=async nvidia-drm.modeset=1 nvidia-drm.fbdev=1 quiet loglevel=3 systemd.show_status=false video=DP-3:3440x1440@240 fbcon=nodefer libahci.ignore_sss=1 usbcore.quirks=048d:5711:i amd_iommu_intr=legacy ahci.mask_port_map=0x80000000
 BOOT_ORDER="linux-eevdf-lto-prop, *, *fallback, Snapshots"
 
 SNAPPER_CONFIG_NAME="root"

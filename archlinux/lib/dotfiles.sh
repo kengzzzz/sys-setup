@@ -221,6 +221,9 @@ install_dotfiles_system_files() {
     if [[ -x $dot_dir/etc/limine/install.sh ]]; then
         "$dot_dir/etc/limine/install.sh"
     fi
+    if [[ -x $dot_dir/etc/initcpio/install.sh ]]; then
+        "$dot_dir/etc/initcpio/install.sh"
+    fi
     mkdir -p /usr/share/wayland-sessions /usr/local/bin
     cp -r "$dot_dir/usr/share/wayland-sessions/." /usr/share/wayland-sessions/
 
